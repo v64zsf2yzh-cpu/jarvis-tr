@@ -1,34 +1,35 @@
-# JARVIS v2
+# JARVIS v3
 
-Sıfırdan eğitilen Türkçe kişisel asistan (Iron Man / Jarvis tarzı).
+Türkçe kişisel asistan + **Ollama** ile genel soru-cevap.
 
-## Yenilikler
+## Ne yapar?
 
-- Daha büyük Türkçe niyet veri seti
-- Unigram + bigram özellikler
-- 3 gizli katmanlı NumPy MLP (ağırlıklar rastgele başlar, harici LLM yok)
-- **Öğretme paneli**: soru → cevap ekle
-- **Yeniden eğit**: öğretilerle birlikte modeli sıfırdan güncelle
-- Çeviri sözlüğü, birim dönüşümü, şifre üretimi, yazı araçları, yazı-tura / zar
+- Saat / tarih / hesap / not / şifre / çeviri (yerel beceriler)
+- Sıfırdan eğitilmiş niyet modeli
+- **Her türlü genel soru** → VPS’teki Ollama LLM
 
-## Kurulum
+## VPS kurulum
 
 ```bash
-pip install -r requirements.txt
-python train.py      # veri setini yaz + sıfırdan eğit
-python app.py        # http://localhost:5050
+cd ~
+rm -rf jarvis-tr
+git clone https://github.com/v64zsf2yzh-cpu/jarvis-tr.git
+cd jarvis-tr
+pip3 install -r requirements.txt
+
+# Genel sorular için model (bir kez)
+ollama pull llama3.2
+# gerekirse: ollama serve &
+
+python3 app.py
 ```
 
-## Öğretme
+Telefonda: `http://SUNUCU_IP:5050`
 
-Sohbette:
-```text
-öğret favori rengim ne | Mavi
-yeniden eğit
+## Ortam değişkenleri (opsiyonel)
+
+```bash
+export OLLAMA_URL=http://127.0.0.1:11434
+export OLLAMA_MODEL=llama3.2
+python3 app.py
 ```
-
-veya arayüzdeki öğretme paneli + **Yeniden eğit** düğmesi.
-
-## Dürüst sınır
-
-Bu bir GPT-ölçeği dil modeli değildir. Sıfırdan eğitilen şey **Türkçe anlama beyni** (niyet sınıflandırıcı) + sizin öğrettiğiniz bilgi bankasıdır. Her cümleyi üreten trilyon-parametreli LLM için ayrı, çok büyük hesaplama gerekir.

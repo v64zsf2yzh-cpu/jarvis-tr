@@ -126,8 +126,9 @@ INTENTS = [
             "rehber", "nasıl öğretebilirim", "eğitim nasıl",
         ],
         "responses": [
-            "Saat, tarih, hesap, birim dönüşümü, şaka, motivasyon, bilgi, not, şifre üretme, çeviri sözlüğü ve öğretme modum var. "
-            "Bana bir şey öğretmek için: öğret soru | cevap  yazın. Sonra 'yeniden eğit' deyin.",
+            "Saat, tarih, hesap, birim, şaka, motivasyon, not, şifre, çeviri ve öğretme modum var. "
+            "Ayrıca Ollama bağlıysa her türlü genel soruya cevap verebilirim. "
+            "Öğretmek için: öğret soru | cevap",
         ],
     },
     {

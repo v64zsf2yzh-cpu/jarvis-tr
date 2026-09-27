@@ -12,6 +12,35 @@ from datetime import datetime
 from typing import Any, Callable
 
 from brain import JarvisBrain, normalize, teach_qa, tokenize, train
+import ollama_client
+
+# Bu niyetler beceri motorunda kalsın; diğerleri / bilinmeyen Ollama'ya gidebilir
+SKILL_TAGS = {
+    "saat",
+    "tarih",
+    "hesap",
+    "sistem",
+    "hatirla",
+    "hatirlat",
+    "yeniden_egit",
+    "ceviri",
+    "birim",
+    "sifre",
+    "yazi",
+    "rastgele",
+    "ad_kaydet",
+    "saka",
+    "motivasyon",
+    "tesekkur",
+    "selamlama",
+    "veda",
+    "kimlik",
+    "yardim",
+    "espri_durum",
+    "hava",
+    "ipucu",
+    "ogret",
+}
 
 _OPS = {
     ast.Add: operator.add,
@@ -89,6 +118,7 @@ class Skills:
         self.memory: list[str] = []
         self.user_name: str | None = None
         self._retrain_fn: Callable[[], dict[str, Any]] | None = None
+        self.chat_history: list[dict[str, str]] = []
 
     def set_retrain(self, fn: Callable[[], dict[str, Any]]) -> None:
         self._retrain_fn = fn
@@ -112,6 +142,50 @@ class Skills:
             return "hesap"
         return None
 
+    def _ask_llm(self, text: str) -> dict[str, Any] | None:
+        result = ollama_client.chat(text, self.chat_history)
+        if not result.get("ok") or not result.get("reply"):
+            return {
+                "reply": self._llm_fail_message(result),
+                "intent": "llm_offline",
+                "confidence": 0.0,
+                "model": "ollama-offline",
+                "error": result.get("error"),
+            }
+        reply = result["reply"]
+        self.chat_history.append({"role": "user", "content": text})
+        self.chat_history.append({"role": "assistant", "content": reply})
+        if len(self.chat_history) > 24:
+            self.chat_history = self.chat_history[-24:]
+        return {
+            "reply": reply,
+            "intent": "genel_soru",
+            "confidence": 0.95,
+            "model": f"ollama:{result.get('model')}",
+        }
+
+    def _llm_fail_message(self, result: dict[str, Any]) -> str:
+        err = result.get("error") or "bilinmeyen hata"
+        return (
+            "Genel soru motoruna (Ollama) bağlanamadım. "
+            "VPS'te şunları çalıştırın:\n"
+            "  ollama serve\n"
+            "  ollama pull llama3.2\n"
+            f"Detay: {err}"
+        )
+
+    def _should_use_llm(self, tag: str, confidence: float, text: str) -> bool:
+        if tag in {"bilinmeyen", "bilgi"}:
+            return True
+        # Soru cümleleri / uzun serbest sohbet
+        low = text.lower().strip()
+        if tag not in SKILL_TAGS and confidence < 0.55:
+            return True
+        if any(w in low for w in ("nedir", "nasıl", "neden", "kimdir", "anlat", "açıkla", "?")):
+            if tag not in {"saat", "tarih", "hesap", "sifre", "birim", "ceviri", "hatirla", "hatirlat", "yeniden_egit", "sistem"}:
+                return True
+        return False
+
     def handle(self, text: str) -> dict[str, Any]:
         # Doğrudan öğret komutu (niyet beklemeden)
         taught = self._try_inline_teach(text)
@@ -133,9 +207,22 @@ class Skills:
         confidence = 0.99
         if not tag:
             tag, confidence = self.brain.classify(text)
+
+        # Genel sorular → Ollama
+        if self._should_use_llm(tag, confidence, text):
+            llm = self._ask_llm(text)
+            if llm:
+                return llm
+
         reply = self._dispatch(tag, text)
         if self.user_name and tag in {"selamlama", "espri_durum"} and self.user_name not in reply:
             reply = f"{self.user_name}, {reply[0].lower() + reply[1:]}" if reply else reply
+
+        # Kısa sohbet geçmişine beceri yanıtlarını da ekle (bağlam için)
+        if tag in {"selamlama", "espri_durum", "kimlik", "yardim"}:
+            self.chat_history.append({"role": "user", "content": text})
+            self.chat_history.append({"role": "assistant", "content": reply})
+
         return {
             "reply": reply,
             "intent": tag,
@@ -261,13 +348,40 @@ class Skills:
 
     def _sistem(self, _t: str) -> str:
         m = self.brain.meta
+        oll = ollama_client.status()
+        oll_line = (
+            f"Ollama: açık · model {oll.get('active_model')}"
+            if oll.get("available")
+            else "Ollama: kapalı (genel sorular için ollama pull llama3.2)"
+        )
         return (
             "Durum raporu: birimler çevrimiçi. "
-            f"Model sıfırdan eğitildi (doğruluk {m.get('accuracy', 0):.0%}, "
-            f"val {m.get('val_accuracy', 0):.0%}). "
-            f"{m.get('samples', '?')} örnek · {len(self.brain.tags)} niyet · "
-            f"sözlük {len(self.brain.vocab)} özellik. "
-            f"Not: {len(self.memory)} · öğretilen bilgi: {len(self.brain.knowledge)}."
+            f"Niyet modeli sıfırdan (doğruluk {m.get('accuracy', 0):.0%}). "
+            f"{m.get('samples', '?')} örnek · {len(self.brain.tags)} niyet. "
+            f"Not: {len(self.memory)} · öğreti: {len(self.brain.knowledge)}. "
+            f"{oll_line}."
+        )
+
+    def _bilgi(self, text: str) -> str:
+        hit = self._knowledge_lookup(text)
+        if hit:
+            return hit
+        llm = self._ask_llm(text)
+        if llm and llm.get("intent") == "genel_soru":
+            return llm["reply"]
+        return llm["reply"] if llm else (
+            "Bilgi bankamda kayıt yok. Ollama ile genel cevap için modeli kurun."
+        )
+
+    def _fallback(self, text: str) -> str:
+        llm = self._ask_llm(text)
+        if llm:
+            return llm["reply"]
+        return random.choice(
+            [
+                "Tam anlayamadım. 'yardım' yazın veya Ollama modelini kurun.",
+                "Düşük güven. Örnekler: saat kaç, 12 çarpı 7, veya herhangi bir genel soru (Ollama ile).",
+            ]
         )
 
     def _hatirla(self, text: str) -> str:
@@ -287,15 +401,6 @@ class Skills:
         if not self.memory:
             return "Henüz not yok. 'Hatırla ...' diyerek ekleyin."
         return "Hafızamdaki notlar:\n" + "\n".join(f"• {m}" for m in self.memory[-12:])
-
-    def _bilgi(self, text: str) -> str:
-        hit = self._knowledge_lookup(text)
-        if hit:
-            return hit
-        return (
-            "Bilgi bankamda jarvis, yapay zeka, python, türkiye gibi konular var. "
-            "Yeni bilgi için: öğret soru | cevap"
-        )
 
     def _yeniden_egit(self, _t: str) -> str:
         if not self._retrain_fn:
@@ -427,12 +532,3 @@ class Skills:
             return hit
         resp = self.brain.pick_response("ogretilen")
         return resp or "Bu konuda öğrettiğiniz bir yanıt var ama eşleşme zayıf. 'yeniden eğit' deneyin."
-
-    def _fallback(self, _t: str) -> str:
-        return random.choice(
-            [
-                "Tam anlayamadım. 'yardım' yazın veya 'öğret soru | cevap' ile bana bir şey öğretin.",
-                "Düşük güven. Örnekler: saat kaç, 12 çarpı 7, çevir merhaba, şifre üret, yeniden eğit.",
-                "Sensörlerim bulanık. Komutu sadeleştirin veya öğretme formatını kullanın.",
-            ]
-        )

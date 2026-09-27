@@ -111,10 +111,12 @@ def retrain():
 
 @app.get("/api/status")
 def status():
+    import ollama_client
+
     return jsonify(
         {
             "name": "Jarvis",
-            "version": 2,
+            "version": 3,
             "language": "tr",
             "trained_from_scratch": True,
             "accuracy": skills.brain.meta.get("accuracy"),
@@ -125,6 +127,7 @@ def status():
             "knowledge_count": len(skills.brain.knowledge),
             "memory_count": len(skills.memory),
             "user_name": skills.user_name,
+            "ollama": ollama_client.status(),
         }
     )
 
