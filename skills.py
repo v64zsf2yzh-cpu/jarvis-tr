@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 import ollama_client
+import gemini_client
 from brain import JarvisBrain, normalize, teach_qa, tokenize, train
 
 _OPS = {
@@ -62,6 +63,20 @@ class Skills:
         if prepared.get("direct"):
             return prepared["direct"]
 
+        result = None
+        # 1) Gemini (varsa birincil)  2) Ollama  3) yerel
+        if gemini_client.is_configured():
+            result = gemini_client.chat(prepared["prompt"], self.chat_history)
+            if result.get("ok") and result.get("reply"):
+                reply = result["reply"]
+                self._remember_turn(text, reply)
+                return {
+                    "reply": reply,
+                    "intent": "sohbet",
+                    "confidence": 0.99,
+                    "model": result.get("model"),
+                }
+
         result = ollama_client.chat(prepared["prompt"], self.chat_history)
         if result.get("ok") and result.get("reply"):
             reply = result["reply"]
@@ -74,18 +89,18 @@ class Skills:
             }
 
         tag, conf = self.brain.classify(text)
-        fallback = self._local_fallback(tag, text, prepared.get("kb"), result)
+        fallback = self._local_fallback(tag, text, prepared.get("kb"), result or {})
         self._remember_turn(text, fallback)
         return {
             "reply": fallback,
             "intent": tag,
             "confidence": round(conf, 3),
             "model": "local-fallback",
-            "error": result.get("error"),
+            "error": (result or {}).get("error"),
         }
 
     def stream(self, text: str):
-        """SSE için: önce direct olay, yoksa token akışı."""
+        """SSE için: önce direct olay, yoksa token akışı (Gemini → Ollama)."""
         prepared = self._prepare(text)
         if prepared.get("direct"):
             d = prepared["direct"]
@@ -94,14 +109,43 @@ class Skills:
             yield {"type": "done", "reply": d["reply"], "intent": d.get("intent"), "model": d.get("model")}
             return
 
+        # Gemini stream
+        if gemini_client.is_configured():
+            yield {"type": "meta", "intent": "sohbet", "model": "gemini"}
+            full = ""
+            model = None
+            had_token = False
+            for ev in gemini_client.chat_stream(prepared["prompt"], self.chat_history):
+                if ev.get("error"):
+                    break
+                if ev.get("token"):
+                    had_token = True
+                    full += ev["token"]
+                    model = ev.get("model") or model
+                    yield {"type": "token", "token": ev["token"], "model": model}
+                if ev.get("done") and (ev.get("reply") or full):
+                    reply = (ev.get("reply") or full).strip()
+                    self._remember_turn(text, reply)
+                    yield {
+                        "type": "done",
+                        "reply": reply,
+                        "intent": "sohbet",
+                        "model": ev.get("model") or model,
+                    }
+                    return
+            if had_token and full.strip():
+                self._remember_turn(text, full.strip())
+                yield {"type": "done", "reply": full.strip(), "intent": "sohbet", "model": model}
+                return
+
+        # Ollama stream yedek
         yield {"type": "meta", "intent": "sohbet", "model": "ollama"}
         full = ""
         model = None
         for ev in ollama_client.chat_stream(prepared["prompt"], self.chat_history):
             if ev.get("error"):
                 msg = (
-                    "Genel zekâ motoruna ulaşılamadı. "
-                    "VPS'te: ollama pull llama3.2 && ollama serve\n"
+                    "Zekâ motoruna ulaşılamadı. Gemini anahtarı veya Ollama gerekli.\n"
                     f"Detay: {ev['error']}"
                 )
                 yield {"type": "token", "token": msg}
@@ -322,15 +366,17 @@ class Skills:
 
     def _sistem_text(self) -> str:
         m = self.brain.meta
+        gem = gemini_client.status()
         oll = ollama_client.status()
-        oll_line = (
-            f"Ollama açık · {oll.get('active_model')}"
-            if oll.get("available")
-            else "Ollama kapalı — genel sorular için: ollama pull llama3.2"
-        )
+        if gem.get("configured"):
+            brain = f"Gemini açık · {gem.get('model')}"
+        elif oll.get("available"):
+            brain = f"Ollama açık · {oll.get('active_model')}"
+        else:
+            brain = "Zekâ motoru kapalı — GEMINI_API_KEY veya ollama gerekli"
         return (
             f"Jarvis çevrimiçi. Niyet modeli doğruluk {m.get('accuracy', 0):.0%}. "
-            f"Not: {len(self.memory)}. Öğreti: {len(self.brain.knowledge)}. {oll_line}."
+            f"Not: {len(self.memory)}. Öğreti: {len(self.brain.knowledge)}. {brain}."
         )
 
     def _knowledge_lookup(self, text: str) -> str | None:

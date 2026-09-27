@@ -134,12 +134,13 @@ def retrain():
 
 @app.get("/api/status")
 def status():
+    import gemini_client
     import ollama_client
 
     return jsonify(
         {
             "name": "Jarvis",
-            "version": "3.5",
+            "version": "3.6",
             "language": "tr",
             "trained_from_scratch": True,
             "accuracy": skills.brain.meta.get("accuracy"),
@@ -150,8 +151,9 @@ def status():
             "knowledge_count": len(skills.brain.knowledge),
             "memory_count": len(skills.memory),
             "user_name": skills.user_name,
+            "gemini": gemini_client.status(),
             "ollama": ollama_client.status(),
-            "features": ["stream", "voice", "command-center", "tools"],
+            "features": ["gemini", "stream", "voice", "command-center", "tools"],
         }
     )
 

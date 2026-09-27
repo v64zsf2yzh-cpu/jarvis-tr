@@ -201,15 +201,24 @@ function stopLevels() {
 async function refreshStatus() {
   try {
     const s = await fetch("/api/status").then((r) => r.json());
+    const gem = s.gemini || {};
     const oll = s.ollama || {};
+    const card = document.getElementById("cardOllama");
     document.getElementById("stMem").textContent = `${s.memory_count || 0} kayıt`;
     document.getElementById("memBadge").textContent = s.knowledge_count || 0;
     document.getElementById("stNlu").textContent = `%${Math.round((s.accuracy || 0) * 100)}`;
-    const card = document.getElementById("cardOllama");
-    if (oll.available && oll.active_model) {
+    if (gem.configured) {
+      document.getElementById("stLlm").textContent = gem.model || "Gemini";
+      document.getElementById("stLlm").classList.add("ok");
+      card.classList.add("on");
+      card.querySelector("span").textContent = "Gemini";
+      card.querySelector("b").textContent = "Bağlı";
+      document.getElementById("sysPill").textContent = "OPTİMAL";
+    } else if (oll.available && oll.active_model) {
       document.getElementById("stLlm").textContent = oll.active_model;
       document.getElementById("stLlm").classList.add("ok");
       card.classList.add("on");
+      card.querySelector("span").textContent = "Ollama";
       card.querySelector("b").textContent = "Bağlı";
       document.getElementById("sysPill").textContent = "OPTİMAL";
     } else {
