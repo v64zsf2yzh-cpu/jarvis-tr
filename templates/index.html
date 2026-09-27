@@ -2,10 +2,12 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
   <meta name="theme-color" content="#020617" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>JARVIS Command Center</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>JARVIS Komuta Merkezi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,111 +16,113 @@
 <body>
   <div class="bg-grid" aria-hidden="true"></div>
 
+  <!-- iOS ses kilidi: ilk dokunuşta açılır, sonra otomatik devam -->
+  <div id="bootGate" class="boot-gate">
+    <div class="boot-card">
+      <p class="boot-brand">J.A.R.V.I.S.</p>
+      <p class="boot-text">Komuta merkezi hazır</p>
+      <p class="boot-hint">Ses ve mikrofon için ekrana bir kez dokun</p>
+      <button type="button" id="bootBtn" class="boot-btn">JARVIS’İ BAŞLAT</button>
+    </div>
+  </div>
+
   <div class="cc">
-    <!-- TOP BAR -->
     <header class="cc-top">
       <div class="top-left">
-        <span class="pill ok" id="sysPill">OPTIMAL</span>
+        <span class="pill ok" id="sysPill">HAZIR</span>
         <span class="muted" id="dateLine">—</span>
       </div>
       <div class="top-center">
-        <h1 class="cc-title">JARVIS COMMAND CENTER</h1>
+        <h1 class="cc-title">JARVIS KOMUTA MERKEZİ</h1>
       </div>
       <div class="top-right">
         <span class="clock" id="clock">00:00:00</span>
-        <span class="muted">Operator</span>
       </div>
     </header>
 
     <div class="cc-body">
-      <!-- SIDE NAV -->
       <nav class="cc-nav" aria-label="Menü">
-        <button class="nav-item active" data-panel="core">AI Core</button>
-        <button class="nav-item" data-panel="chat">Conversations</button>
-        <button class="nav-item" data-panel="memory">Memory <em id="memBadge">0</em></button>
-        <button class="nav-item" data-panel="status">System</button>
-        <button class="nav-item" data-panel="tools">Tools</button>
+        <button type="button" class="nav-item active" data-act="selam">Çekirdek</button>
+        <button type="button" class="nav-item" data-act="sohbet">Sohbet</button>
+        <button type="button" class="nav-item" data-act="hafiza">Hafıza <em id="memBadge">0</em></button>
+        <button type="button" class="nav-item" data-act="durum">Sistem</button>
+        <button type="button" class="nav-item" data-act="yardim">Yetenekler</button>
       </nav>
 
-      <!-- MAIN GRID -->
       <main class="cc-main">
-        <!-- LEFT COLUMN -->
         <section class="panel overview">
-          <h2>AI Core Overview</h2>
+          <h2>Çekirdek Özeti</h2>
           <ul class="stat-list">
-            <li><span>Core</span><b class="ok" id="stCore">Active</b></li>
-            <li><span>Memory</span><b id="stMem">0 stored</b></li>
-            <li><span>Voice</span><b class="ok" id="stVoice">Online</b></li>
-            <li><span>LLM</span><b id="stLlm">Checking…</b></li>
+            <li><span>Çekirdek</span><b class="ok" id="stCore">Aktif</b></li>
+            <li><span>Hafıza</span><b id="stMem">0 kayıt</b></li>
+            <li><span>Ses</span><b class="ok" id="stVoice">Açık</b></li>
+            <li><span>LLM</span><b id="stLlm">Kontrol…</b></li>
             <li><span>NLU</span><b id="stNlu">—</b></li>
-            <li><span>System</span><b class="ok">Optimal</b></li>
+            <li><span>Sistem</span><b class="ok">Stabil</b></li>
           </ul>
         </section>
 
         <section class="panel core-panel">
           <div class="core-wrap">
-            <canvas id="orb" width="640" height="640" aria-label="Jarvis AI Core"></canvas>
-            <p class="core-label">JARVIS AI CORE <span id="coreVer">v3.1</span></p>
+            <canvas id="orb" width="640" height="640" aria-label="Jarvis çekirdeği"></canvas>
+            <p class="core-label">JARVIS YZ ÇEKİRDEĞİ <span>v3.2</span></p>
           </div>
           <div class="wave-row" aria-hidden="true">
             <canvas id="waveL" width="200" height="40"></canvas>
             <canvas id="waveR" width="200" height="40"></canvas>
           </div>
+          <p class="live-caption" id="liveCaption">Başlatılıyor…</p>
         </section>
 
         <section class="panel feed">
-          <h2>Live Feed</h2>
+          <h2>Canlı Akış</h2>
           <div class="feed-list" id="feedList"></div>
         </section>
 
-        <!-- CHAT / CONVERSATION -->
         <section class="panel chat-panel" id="chatPanel">
-          <h2>Conversations</h2>
+          <h2>Sohbet</h2>
           <div class="log" id="log" role="log" aria-live="polite"></div>
         </section>
 
-        <!-- BOTTOM LEFT SYSTEM -->
         <section class="panel monitor">
-          <h2>System Monitor</h2>
+          <h2>Sistem Monitörü</h2>
           <div class="gauges">
-            <div class="gauge" data-v="18"><i></i><span>CPU</span><b id="gCpu">18%</b></div>
-            <div class="gauge" data-v="42"><i></i><span>RAM</span><b id="gRam">42%</b></div>
-            <div class="gauge" data-v="35"><i></i><span>DISK</span><b id="gDisk">35%</b></div>
+            <div class="gauge"><i></i><span>CPU</span><b id="gCpu">18%</b></div>
+            <div class="gauge"><i></i><span>RAM</span><b id="gRam">42%</b></div>
+            <div class="gauge"><i></i><span>DİSK</span><b id="gDisk">35%</b></div>
           </div>
           <div class="voice-box">
-            <p class="voice-state" id="voiceState">Listening…</p>
+            <p class="voice-state" id="voiceState">Beklemede</p>
             <canvas id="voiceWave" width="280" height="36"></canvas>
             <button type="button" id="micBtn" class="mic-fab" aria-pressed="false">
-              <span id="talkLabel">Tap to Speak</span>
+              <span id="talkLabel">Konuşmak için dokun</span>
             </button>
           </div>
         </section>
 
-        <!-- LLM STATUS -->
         <section class="panel llm">
-          <h2>LLM Status</h2>
-          <div class="llm-grid" id="llmGrid">
+          <h2>Model Durumu</h2>
+          <div class="llm-grid">
             <div class="llm-card" id="cardOllama"><span>Ollama</span><b>—</b></div>
-            <div class="llm-card dim"><span>OpenAI</span><b>Not Linked</b></div>
-            <div class="llm-card dim"><span>Claude</span><b>Not Linked</b></div>
-            <div class="llm-card dim"><span>Gemini</span><b>Not Linked</b></div>
+            <div class="llm-card dim"><span>OpenAI</span><b>Bağlı değil</b></div>
+            <div class="llm-card dim"><span>Claude</span><b>Bağlı değil</b></div>
+            <div class="llm-card dim"><span>Gemini</span><b>Bağlı değil</b></div>
           </div>
           <div class="quick">
-            <button type="button" class="qbtn" id="convBtn" aria-pressed="false">Start Voice Chat</button>
-            <button type="button" class="qbtn ghost" id="speakToggle" aria-pressed="true">Jarvis Voice</button>
-            <button type="button" class="qbtn ghost" id="clearBtn">Clear Chat</button>
+            <button type="button" class="qbtn" id="convBtn" aria-pressed="true">Sürekli sohbet açık</button>
+            <button type="button" class="qbtn ghost" id="speakToggle" aria-pressed="true">Jarvis sesi açık</button>
+            <button type="button" class="qbtn ghost" id="clearBtn">Sohbeti temizle</button>
           </div>
         </section>
       </main>
     </div>
 
-    <!-- BOTTOM TALK BAR -->
     <footer class="talk-bar">
       <canvas id="waveBarL" width="120" height="28" aria-hidden="true"></canvas>
       <form class="talk-form" id="chatForm">
-        <button type="button" class="talk-main" id="talkMain">TALK TO JARVIS</button>
-        <input id="messageInput" type="text" placeholder="I am listening… yaz veya konuş" autocomplete="off" />
-        <button type="submit" class="send">Send</button>
+        <button type="button" class="talk-main" id="talkMain">JARVIS’E KONUŞ</button>
+        <input id="messageInput" type="text" enterkeyhint="send" placeholder="Dinliyorum… yazabilir veya konuşabilirsin" autocomplete="off" />
+        <button type="submit" class="send">Gönder</button>
       </form>
       <canvas id="waveBarR" width="120" height="28" aria-hidden="true"></canvas>
     </footer>
