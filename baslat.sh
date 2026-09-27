@@ -25,4 +25,13 @@ else
 fi
 
 echo "Jarvis UI başlıyor..."
+# Gemini anahtarı (varsa)
+if [[ -f .gemini_key ]]; then
+  export GEMINI_API_KEY="$(cat .gemini_key | tr -d '\n')"
+  echo "Gemini API anahtarı yüklendi."
+elif [[ -n "${GEMINI_API_KEY:-}" ]]; then
+  echo "Gemini API ortam değişkeninden yüklendi."
+else
+  echo "Uyarı: GEMINI_API_KEY yok — Ollama yedek olarak kullanılır."
+fi
 python3 app.py

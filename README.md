@@ -1,36 +1,26 @@
-# JARVIS v3.5 — Komuta Merkezi
+# JARVIS v3.6 — Gemini + Komuta Merkezi
 
-Türkçe sesli asistan + Ollama + mobil Command Center.
-
-## VPS kurulum
+## VPS’te Gemini bağlama
 
 ```bash
 cd ~/jarvis-tr
 git pull
-pip3 install -r requirements.txt
 
-# Genel zekâ (zorunlu — yoksa sorulara cevap zayıf kalır)
-ollama pull llama3.2
-ollama serve &
+# Anahtarı kaydet (GitHub'a gitmez)
+echo 'SENIN_GEMINI_ANAHTARIN' > .gemini_key
+
+# veya:
+# export GEMINI_API_KEY='SENIN_GEMINI_ANAHTARIN'
 
 python3 app.py
 ```
 
-Telefonda: `http://SUNUCU_IP:5050`  
-iPhone’da bir kez **JARVIS’İ BAŞLAT** → sonra otomatik konuşur/dinler.
+Telefonda: `http://SUNUCU_IP:5050` → **JARVIS’İ BAŞLAT**
 
-## Özellikler
+## Öncelik sırası
 
-- Canlı yanıt akışı (stream)
-- Sürekli sesli sohbet
-- Konuşurken hareket eden hologram
-- Saat / hesap / not araçları
-- Öğretme + yeniden eğitim
-- iOS / Android mobil arayüz (Türkçe)
+1. **Gemini** (varsa)
+2. Ollama (yedek)
+3. Yerel araçlar (saat/hesap/not)
 
-## Ortam
-
-```bash
-export OLLAMA_MODEL=llama3.2
-export OLLAMA_URL=http://127.0.0.1:11434
-```
+Model: `gemini-3.8-flash` (`GEMINI_MODEL` ile değiştirilebilir)
