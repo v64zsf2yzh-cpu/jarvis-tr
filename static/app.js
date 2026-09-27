@@ -9,6 +9,7 @@ const teachQ = document.getElementById("teachQ");
 const teachA = document.getElementById("teachA");
 const core = document.getElementById("core");
 const statusLine = document.getElementById("statusLine");
+const quickRow = document.getElementById("quickRow");
 
 let voiceOn = true;
 let recognizing = false;
@@ -54,7 +55,7 @@ async function refreshStatus() {
   try {
     const s = await fetch("/api/status").then((r) => r.json());
     setStatus(
-      `Çevrimiçi · doğruluk ${(s.accuracy * 100).toFixed(0)}% · ${s.samples} örnek · ${s.knowledge_count} öğreti`
+      `Çevrimiçi · %${(s.accuracy * 100).toFixed(0)} · ${s.knowledge_count} öğreti`
     );
   } catch (_) {}
 }
@@ -70,7 +71,7 @@ async function askJarvis(message) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Hata");
-    const meta = `niyet: ${data.intent} · güven: ${Math.round(data.confidence * 100)}%`;
+    const meta = `${data.intent} · %${Math.round(data.confidence * 100)}`;
     addMessage("bot", data.reply, meta);
     speak(data.reply);
     await refreshStatus();
@@ -88,13 +89,22 @@ form.addEventListener("submit", async (e) => {
   if (!message) return;
   addMessage("user", message);
   input.value = "";
+  input.focus();
   await askJarvis(message);
+});
+
+quickRow?.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".chip");
+  if (!btn) return;
+  const q = btn.dataset.q;
+  addMessage("user", q);
+  await askJarvis(q);
 });
 
 speakToggle.addEventListener("click", () => {
   voiceOn = !voiceOn;
   speakToggle.setAttribute("aria-pressed", String(voiceOn));
-  speakToggle.textContent = voiceOn ? "Sesli yanıt açık" : "Sesli yanıt kapalı";
+  speakToggle.textContent = voiceOn ? "Ses açık" : "Ses kapalı";
   if (!voiceOn && window.speechSynthesis) window.speechSynthesis.cancel();
 });
 
@@ -112,7 +122,7 @@ teachForm.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Hata");
-    addMessage("bot", `Öğrendim. Kalıcı olması için «Yeniden eğit»e basın.`);
+    addMessage("bot", "Öğrendim. Kalıcı için «Yeniden eğit»e bas.");
     teachQ.value = "";
     teachA.value = "";
     await refreshStatus();
@@ -125,13 +135,13 @@ retrainBtn.addEventListener("click", async () => {
   core.classList.add("thinking");
   setStatus("Sıfırdan eğitiliyor…");
   retrainBtn.disabled = true;
-  addMessage("bot", "Yeniden eğitim başladı. Bu birkaç saniye sürebilir.");
+  addMessage("bot", "Yeniden eğitim başladı…");
   try {
     const res = await fetch("/api/retrain", { method: "POST" });
     const data = await res.json();
     if (!res.ok) throw new Error("retrain");
     const m = data.meta;
-    const msg = `Eğitim bitti. Doğruluk %${Math.round(m.accuracy * 100)} · ${m.samples} örnek · ${m.intents} niyet.`;
+    const msg = `Eğitim bitti. Doğruluk %${Math.round(m.accuracy * 100)} · ${m.samples} örnek.`;
     addMessage("bot", msg);
     speak(msg);
     await refreshStatus();
@@ -147,7 +157,7 @@ function setupSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     micBtn.disabled = true;
-    micBtn.title = "Bu tarayıcı ses tanımayı desteklemiyor";
+    micBtn.title = "Ses tanıma desteklenmiyor";
     return;
   }
   recognition = new SR();
@@ -158,7 +168,6 @@ function setupSpeech() {
   recognition.onstart = () => {
     recognizing = true;
     micBtn.setAttribute("aria-pressed", "true");
-    micBtn.childNodes[micBtn.childNodes.length - 1].textContent = " Dinleniyor…";
     core.classList.add("listening");
     setStatus("Dinliyorum");
   };
@@ -166,7 +175,6 @@ function setupSpeech() {
   recognition.onend = () => {
     recognizing = false;
     micBtn.setAttribute("aria-pressed", "false");
-    micBtn.lastChild.textContent = " Dinle";
     core.classList.remove("listening");
     setStatus("Sistemler çevrimiçi");
   };
@@ -191,8 +199,12 @@ function setupSpeech() {
 }
 
 setupSpeech();
-addMessage(
-  "bot",
-  "Merhaba. Jarvis v2 çevrimiçi. Bana bir şey öğretmek için paneli kullanın veya yazın: öğret favori rengim ne | Mavi"
-);
+addMessage("bot", "Merhaba. Jarvis hazır. Yaz veya mikrofona bas.");
 refreshStatus();
+
+// Mobil klavye açılınca sohbeti alta kaydır
+input.addEventListener("focus", () => {
+  setTimeout(() => {
+    logEl.scrollTop = logEl.scrollHeight;
+  }, 300);
+});

@@ -2,7 +2,11 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050a12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="JARVIS — sıfırdan eğitilmiş Türkçe kişisel asistan" />
   <title>JARVIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,58 +16,69 @@
 <body>
   <div class="atmosphere" aria-hidden="true"></div>
   <div class="grid-overlay" aria-hidden="true"></div>
+  <div class="scanline" aria-hidden="true"></div>
 
-  <main class="stage">
-    <header class="brand-block">
-      <p class="brand">JARVIS</p>
-      <h1 class="headline">Sıfırdan eğitilen Türkçe asistan</h1>
-      <p class="lede">Konuşun, öğretin, yeniden eğitin. Beyin tamamen bu projede öğrenir.</p>
-      <div class="cta-row">
-        <button type="button" id="micBtn" class="cta primary" aria-pressed="false">
-          <span class="cta-dot"></span>
-          Dinle
-        </button>
-        <button type="button" id="speakToggle" class="cta ghost" aria-pressed="true">Sesli yanıt açık</button>
-        <button type="button" id="retrainBtn" class="cta ghost">Yeniden eğit</button>
-        <a class="cta ghost download-link" href="/static/jarvis.zip" download="jarvis.zip">Zip indir</a>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <p class="brand">JARVIS</p>
+        <p class="status-line" id="statusLine">Sistemler çevrimiçi</p>
+      </div>
+      <div class="core mini" id="core" aria-hidden="true">
+        <div class="ring ring-a"></div>
+        <div class="ring ring-b"></div>
+        <div class="nucleus"></div>
       </div>
     </header>
 
-    <section class="core-wrap" aria-label="Jarvis çekirdeği">
-      <div class="core" id="core">
-        <div class="ring ring-a"></div>
-        <div class="ring ring-b"></div>
-        <div class="ring ring-c"></div>
-        <div class="nucleus"></div>
+    <section class="hero-strip" aria-label="Karşılama">
+      <h1 class="headline">Türkçe kişisel asistanın</h1>
+      <p class="lede">Konuş, yaz, öğret. Beyin sıfırdan eğitildi.</p>
+      <div class="quick-row" id="quickRow">
+        <button type="button" class="chip" data-q="saat kaç">Saat</button>
+        <button type="button" class="chip" data-q="şaka yap">Şaka</button>
+        <button type="button" class="chip" data-q="sistem durumu">Durum</button>
+        <button type="button" class="chip" data-q="yardım">Yardım</button>
       </div>
-      <p class="status-line" id="statusLine">Sistemler çevrimiçi</p>
-    </section>
-
-    <section class="teach-panel" aria-label="Öğretme">
-      <h2>Öğretme paneli</h2>
-      <p class="teach-lede">Yeni soru-cevap ekleyin. Sonra «Yeniden eğit» ile ağırlıkları sıfırdan güncelleyin.</p>
-      <form id="teachForm" class="teach-form">
-        <input id="teachQ" type="text" placeholder="Soru / kalıp" required />
-        <input id="teachA" type="text" placeholder="Cevap" required />
-        <button type="submit" class="send">Öğret</button>
-      </form>
     </section>
 
     <section class="console" aria-label="Sohbet">
       <div class="log" id="log" role="log" aria-live="polite"></div>
+    </section>
+
+    <details class="teach-drawer">
+      <summary>Öğretme paneli</summary>
+      <p class="teach-lede">Soru → cevap ekle, sonra yeniden eğit.</p>
+      <form id="teachForm" class="teach-form">
+        <input id="teachQ" type="text" placeholder="Soru" required enterkeyhint="next" />
+        <input id="teachA" type="text" placeholder="Cevap" required enterkeyhint="done" />
+        <div class="teach-actions">
+          <button type="submit" class="send">Öğret</button>
+          <button type="button" id="retrainBtn" class="cta ghost">Yeniden eğit</button>
+        </div>
+      </form>
+    </details>
+
+    <footer class="dock">
       <form class="composer" id="chatForm">
+        <button type="button" id="micBtn" class="mic" aria-pressed="false" aria-label="Mikrofon">
+          <span class="cta-dot"></span>
+        </button>
         <input
           id="messageInput"
           type="text"
           autocomplete="off"
-          placeholder="Komut, sohbet veya: öğret soru | cevap"
+          enterkeyhint="send"
+          placeholder="Jarvis’e yaz…"
           aria-label="Mesaj"
         />
         <button type="submit" class="send">Gönder</button>
       </form>
-      <p class="hint">Örnek: «saat kaç» · «10 km mil» · «çevir merhaba» · «şifre üret» · «yeniden eğit»</p>
-    </section>
-  </main>
+      <div class="dock-tools">
+        <button type="button" id="speakToggle" class="tool" aria-pressed="true">Ses açık</button>
+      </div>
+    </footer>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>

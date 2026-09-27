@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
@@ -14,6 +15,17 @@ ROOT = Path(__file__).resolve().parent
 MODEL = ROOT / "model" / "jarvis_brain.npz"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
+
+
+def local_ip() -> str:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
 
 
 def boot() -> Skills:
@@ -49,9 +61,13 @@ def index():
 @app.get("/download")
 def download_zip():
     from flask import send_from_directory
-    return send_from_directory(
-        ROOT / "static", "jarvis.zip", as_attachment=True, download_name="jarvis.zip"
-    )
+
+    static = ROOT / "static"
+    # zip yoksa proje kökündeki yedeği dene
+    name = "jarvis.zip"
+    if not (static / name).exists():
+        return jsonify({"error": "Zip yok"}), 404
+    return send_from_directory(static, name, as_attachment=True, download_name="jarvis.zip")
 
 
 @app.post("/api/chat")
@@ -79,13 +95,18 @@ def retrain():
     meta = skills._retrain_fn() if skills._retrain_fn else train()
     if not skills._retrain_fn:
         skills.brain = JarvisBrain()
-    return jsonify({"ok": True, "meta": {
-        "accuracy": meta.get("accuracy"),
-        "val_accuracy": meta.get("val_accuracy"),
-        "samples": meta.get("samples"),
-        "intents": len(meta.get("tags", [])),
-        "vocab": len(meta.get("vocab", [])),
-    }})
+    return jsonify(
+        {
+            "ok": True,
+            "meta": {
+                "accuracy": meta.get("accuracy"),
+                "val_accuracy": meta.get("val_accuracy"),
+                "samples": meta.get("samples"),
+                "intents": len(meta.get("tags", [])),
+                "vocab": len(meta.get("vocab", [])),
+            },
+        }
+    )
 
 
 @app.get("/api/status")
@@ -109,4 +130,13 @@ def status():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5050, debug=False)
+    port = 5050
+    ip = local_ip()
+    print()
+    print("=" * 50)
+    print("  JARVIS arayüzü hazır")
+    print(f"  Telefondan aç : http://{ip}:{port}")
+    print(f"  Bu cihazda    : http://127.0.0.1:{port}")
+    print("=" * 50)
+    print()
+    app.run(host="0.0.0.0", port=port, debug=False)
