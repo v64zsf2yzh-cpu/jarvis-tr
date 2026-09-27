@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#050a12" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="description" content="JARVIS — sıfırdan eğitilmiş Türkçe kişisel asistan" />
   <title>JARVIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,13 +14,12 @@
 <body>
   <div class="atmosphere" aria-hidden="true"></div>
   <div class="grid-overlay" aria-hidden="true"></div>
-  <div class="scanline" aria-hidden="true"></div>
 
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-lockup">
         <p class="brand">JARVIS</p>
-        <p class="status-line" id="statusLine">Sistemler çevrimiçi</p>
+        <p class="status-line" id="statusLine">Bağlanıyor…</p>
       </div>
       <div class="core mini" id="core" aria-hidden="true">
         <div class="ring ring-a"></div>
@@ -31,14 +28,15 @@
       </div>
     </header>
 
-    <section class="hero-strip" aria-label="Karşılama">
-      <h1 class="headline">Türkçe kişisel asistanın</h1>
-      <p class="lede">Konuş, yaz, öğret. Beyin sıfırdan eğitildi.</p>
+    <section class="hero-strip">
+      <h1 class="headline">Emrinizdeyim</h1>
+      <p class="lede" id="lede">Genel zekâ + yerel araçlar. Sorun, konuşun, öğretin.</p>
       <div class="quick-row" id="quickRow">
-        <button type="button" class="chip" data-q="saat kaç">Saat</button>
-        <button type="button" class="chip" data-q="şaka yap">Şaka</button>
+        <button type="button" class="chip" data-q="Kimsin ve ne yapabilirsin?">Kimsin?</button>
+        <button type="button" class="chip" data-q="Türkiye hakkında kısa bilgi ver">Türkiye</button>
+        <button type="button" class="chip" data-q="Python nedir? Basit anlat">Python</button>
         <button type="button" class="chip" data-q="sistem durumu">Durum</button>
-        <button type="button" class="chip" data-q="yardım">Yardım</button>
+        <button type="button" class="chip" data-q="Bana kısa bir motivasyon ver">Motivasyon</button>
       </div>
     </section>
 
@@ -47,11 +45,10 @@
     </section>
 
     <details class="teach-drawer">
-      <summary>Öğretme paneli</summary>
-      <p class="teach-lede">Soru → cevap ekle, sonra yeniden eğit.</p>
+      <summary>Öğretme</summary>
       <form id="teachForm" class="teach-form">
-        <input id="teachQ" type="text" placeholder="Soru" required enterkeyhint="next" />
-        <input id="teachA" type="text" placeholder="Cevap" required enterkeyhint="done" />
+        <input id="teachQ" type="text" placeholder="Soru" required />
+        <input id="teachA" type="text" placeholder="Cevap" required />
         <div class="teach-actions">
           <button type="submit" class="send">Öğret</button>
           <button type="button" id="retrainBtn" class="cta ghost">Yeniden eğit</button>
@@ -64,22 +61,15 @@
         <button type="button" id="micBtn" class="mic" aria-pressed="false" aria-label="Mikrofon">
           <span class="cta-dot"></span>
         </button>
-        <input
-          id="messageInput"
-          type="text"
-          autocomplete="off"
-          enterkeyhint="send"
-          placeholder="Jarvis’e yaz…"
-          aria-label="Mesaj"
-        />
+        <input id="messageInput" type="text" autocomplete="off" enterkeyhint="send" placeholder="Her şeyi sorabilirsin…" aria-label="Mesaj" />
         <button type="submit" class="send">Gönder</button>
       </form>
       <div class="dock-tools">
         <button type="button" id="speakToggle" class="tool" aria-pressed="true">Ses açık</button>
+        <button type="button" id="clearBtn" class="tool">Temizle</button>
       </div>
     </footer>
   </div>
-
   <script src="/static/app.js"></script>
 </body>
 </html>

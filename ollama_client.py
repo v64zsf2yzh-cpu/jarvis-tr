@@ -12,11 +12,18 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "").strip()  # boşsa otomatik seç
 TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "120"))
 
-SYSTEM_PROMPT = """Sen Jarvis'sin: Iron Man tarzı, Türkçe konuşan kişisel yapay zeka asistanı.
-Kısa, net ve yardımcı cevap ver. Gereksiz uzatma.
-Türkçe yanıtla. Bilmiyorsan dürüstçe söyle.
-Matematik, bilgi, kod, günlük sorular ve sohbette yardımcı ol.
-Kullanıcıya 'efendim' diye hitap edebilirsin ama abartma."""
+SYSTEM_PROMPT = """Sen JARVIS'sin — Tony Stark'ın asistanı gibi, ama Türkçe konuşan modern bir yapay zeka.
+
+Kurallar:
+- Her soruya mümkün olduğunca yardımcı, doğru ve net cevap ver.
+- Türkçe yaz. Teknik konularda da açıklayıcı ol.
+- Uzun cevap gerekirse maddeler kullan; gereksiz doldurma yapma.
+- Matematik, kod, bilim, tarih, günlük hayat, tavsiye — hepsinde yardımcı ol.
+- Bilmiyorsan uydurma; emin değilsen belirt.
+- Araç verisi (saat, tarih, hesap, notlar) verilmişse onu kullan.
+- Hitap: doğal ve saygılı; ara sıra 'efendim' diyebilirsin ama her cümlede değil.
+- Sen bir asistansın: harekete geçirici, pratik, zeki."""
+
 
 
 def _http_json(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -98,7 +105,7 @@ def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict
                 "model": model,
                 "messages": messages,
                 "stream": False,
-                "options": {"temperature": 0.7, "num_predict": 512},
+                "options": {"temperature": 0.7, "num_predict": 1024},
             },
         )
         reply = (data.get("message") or {}).get("content") or ""

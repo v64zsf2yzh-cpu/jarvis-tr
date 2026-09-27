@@ -3,12 +3,14 @@ const form = document.getElementById("chatForm");
 const input = document.getElementById("messageInput");
 const micBtn = document.getElementById("micBtn");
 const speakToggle = document.getElementById("speakToggle");
+const clearBtn = document.getElementById("clearBtn");
 const retrainBtn = document.getElementById("retrainBtn");
 const teachForm = document.getElementById("teachForm");
 const teachQ = document.getElementById("teachQ");
 const teachA = document.getElementById("teachA");
 const core = document.getElementById("core");
 const statusLine = document.getElementById("statusLine");
+const lede = document.getElementById("lede");
 const quickRow = document.getElementById("quickRow");
 
 let voiceOn = true;
@@ -33,6 +35,7 @@ function addMessage(role, text, meta = "") {
   }
   logEl.append(row);
   logEl.scrollTop = logEl.scrollHeight;
+  return row;
 }
 
 function setStatus(text) {
@@ -42,7 +45,7 @@ function setStatus(text) {
 function speak(text) {
   if (!voiceOn || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
+  const u = new SpeechSynthesisUtterance(text.slice(0, 600));
   u.lang = "tr-TR";
   u.rate = 1.02;
   const voices = window.speechSynthesis.getVoices();
@@ -51,18 +54,33 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
+function showTyping() {
+  const row = addMessage("bot", "Düşünüyorum…");
+  row.classList.add("typing");
+  row.querySelector(".bubble").classList.add("typing-dots");
+  return row;
+}
+
 async function refreshStatus() {
   try {
     const s = await fetch("/api/status").then((r) => r.json());
-    setStatus(
-      `Çevrimiçi · %${(s.accuracy * 100).toFixed(0)} · ${s.knowledge_count} öğreti`
-    );
-  } catch (_) {}
+    const oll = s.ollama || {};
+    if (oll.available && oll.active_model) {
+      setStatus(`Çevrimiçi · ${oll.active_model}`);
+      lede.textContent = `Ollama hazır (${oll.active_model}). Her soruyu sorabilirsin.`;
+    } else {
+      setStatus("Ollama kapalı — model kur");
+      lede.textContent = "Genel cevap için VPS’te: ollama pull llama3.2";
+    }
+  } catch (_) {
+    setStatus("Bağlantı yok");
+  }
 }
 
 async function askJarvis(message) {
   core.classList.add("thinking");
-  setStatus("İşleniyor");
+  setStatus("Düşünüyor…");
+  const typing = showTyping();
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -70,14 +88,16 @@ async function askJarvis(message) {
       body: JSON.stringify({ message }),
     });
     const data = await res.json();
+    typing.remove();
     if (!res.ok) throw new Error(data.error || "Hata");
-    const meta = `${data.intent} · %${Math.round(data.confidence * 100)}`;
+    const meta = `${data.intent} · ${data.model || ""}`;
     addMessage("bot", data.reply, meta);
     speak(data.reply);
     await refreshStatus();
   } catch (err) {
-    addMessage("bot", "Bağlantı hatası. Sunucu çalışıyor mu?");
-    setStatus("Bağlantı kesildi");
+    typing.remove();
+    addMessage("bot", "Bağlantı hatası. python3 app.py çalışıyor mu?");
+    setStatus("Hata");
   } finally {
     core.classList.remove("thinking");
   }
@@ -89,7 +109,6 @@ form.addEventListener("submit", async (e) => {
   if (!message) return;
   addMessage("user", message);
   input.value = "";
-  input.focus();
   await askJarvis(message);
 });
 
@@ -108,6 +127,11 @@ speakToggle.addEventListener("click", () => {
   if (!voiceOn && window.speechSynthesis) window.speechSynthesis.cancel();
 });
 
+clearBtn?.addEventListener("click", () => {
+  logEl.innerHTML = "";
+  addMessage("bot", "Sohbet temizlendi. Buyurun.");
+});
+
 teachForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = teachQ.value.trim();
@@ -122,34 +146,25 @@ teachForm.addEventListener("submit", async (e) => {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Hata");
-    addMessage("bot", "Öğrendim. Kalıcı için «Yeniden eğit»e bas.");
+    addMessage("bot", "Öğrendim.");
     teachQ.value = "";
     teachA.value = "";
-    await refreshStatus();
   } catch (_) {
-    addMessage("bot", "Öğretme isteği başarısız.");
+    addMessage("bot", "Öğretme başarısız.");
   }
 });
 
 retrainBtn.addEventListener("click", async () => {
-  core.classList.add("thinking");
-  setStatus("Sıfırdan eğitiliyor…");
   retrainBtn.disabled = true;
-  addMessage("bot", "Yeniden eğitim başladı…");
+  addMessage("bot", "Yeniden eğitiliyor…");
   try {
     const res = await fetch("/api/retrain", { method: "POST" });
     const data = await res.json();
-    if (!res.ok) throw new Error("retrain");
-    const m = data.meta;
-    const msg = `Eğitim bitti. Doğruluk %${Math.round(m.accuracy * 100)} · ${m.samples} örnek.`;
-    addMessage("bot", msg);
-    speak(msg);
-    await refreshStatus();
+    addMessage("bot", `Eğitim bitti · %${Math.round((data.meta?.accuracy || 0) * 100)}`);
   } catch (_) {
-    addMessage("bot", "Eğitim sırasında hata oluştu.");
+    addMessage("bot", "Eğitim hatası.");
   } finally {
     retrainBtn.disabled = false;
-    core.classList.remove("thinking");
   }
 });
 
@@ -157,54 +172,33 @@ function setupSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     micBtn.disabled = true;
-    micBtn.title = "Ses tanıma desteklenmiyor";
     return;
   }
   recognition = new SR();
   recognition.lang = "tr-TR";
-  recognition.interimResults = false;
-  recognition.continuous = false;
-
   recognition.onstart = () => {
     recognizing = true;
     micBtn.setAttribute("aria-pressed", "true");
     core.classList.add("listening");
     setStatus("Dinliyorum");
   };
-
   recognition.onend = () => {
     recognizing = false;
     micBtn.setAttribute("aria-pressed", "false");
     core.classList.remove("listening");
-    setStatus("Sistemler çevrimiçi");
   };
-
-  recognition.onerror = () => setStatus("Mikrofon hatası");
-
   recognition.onresult = async (event) => {
     const transcript = event.results[0][0].transcript.trim();
     if (!transcript) return;
     addMessage("user", transcript);
     await askJarvis(transcript);
   };
-
   micBtn.addEventListener("click", () => {
-    if (!recognition) return;
-    if (recognizing) {
-      recognition.stop();
-      return;
-    }
-    recognition.start();
+    if (recognizing) recognition.stop();
+    else recognition.start();
   });
 }
 
 setupSpeech();
-addMessage("bot", "Merhaba. Jarvis hazır. Yaz veya mikrofona bas.");
+addMessage("bot", "Jarvis v3 hazır. Ollama açıksa her soruna cevap veririm.");
 refreshStatus();
-
-// Mobil klavye açılınca sohbeti alta kaydır
-input.addEventListener("focus", () => {
-  setTimeout(() => {
-    logEl.scrollTop = logEl.scrollHeight;
-  }, 300);
-});
