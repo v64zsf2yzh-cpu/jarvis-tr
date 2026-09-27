@@ -3,70 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#050a12" />
+  <meta name="theme-color" content="#030711" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>JARVIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <div class="atmosphere" aria-hidden="true"></div>
+  <div class="hud-frame" aria-hidden="true"></div>
   <div class="grid-overlay" aria-hidden="true"></div>
 
   <div class="app-shell">
     <header class="topbar">
       <div class="brand-lockup">
-        <p class="brand">JARVIS</p>
-        <p class="status-line" id="statusLine">Bağlanıyor…</p>
+        <p class="brand">J.A.R.V.I.S.</p>
+        <p class="status-line" id="statusLine">SİSTEM HAZIR</p>
       </div>
-      <div class="core mini" id="core" aria-hidden="true">
-        <div class="ring ring-a"></div>
-        <div class="ring ring-b"></div>
-        <div class="nucleus"></div>
+      <div class="hud-meta" id="hudMeta">
+        <span id="modelTag">MODEL —</span>
+        <span id="voiceTag">SES AKTİF</span>
       </div>
     </header>
 
-    <section class="hero-strip">
-      <h1 class="headline">Emrinizdeyim</h1>
-      <p class="lede" id="lede">Genel zekâ + yerel araçlar. Sorun, konuşun, öğretin.</p>
-      <div class="quick-row" id="quickRow">
-        <button type="button" class="chip" data-q="Kimsin ve ne yapabilirsin?">Kimsin?</button>
-        <button type="button" class="chip" data-q="Türkiye hakkında kısa bilgi ver">Türkiye</button>
-        <button type="button" class="chip" data-q="Python nedir? Basit anlat">Python</button>
-        <button type="button" class="chip" data-q="sistem durumu">Durum</button>
-        <button type="button" class="chip" data-q="Bana kısa bir motivasyon ver">Motivasyon</button>
+    <section class="reactor-stage" aria-label="Jarvis çekirdeği">
+      <div class="core hero" id="core">
+        <div class="ring ring-outer"></div>
+        <div class="ring ring-a"></div>
+        <div class="ring ring-b"></div>
+        <div class="ring ring-c"></div>
+        <div class="nucleus"></div>
+        <div class="pulse-wave"></div>
       </div>
+      <p class="reactor-caption" id="reactorCaption">Dinlemek için basılı tutun</p>
     </section>
 
     <section class="console" aria-label="Sohbet">
       <div class="log" id="log" role="log" aria-live="polite"></div>
     </section>
 
-    <details class="teach-drawer">
-      <summary>Öğretme</summary>
-      <form id="teachForm" class="teach-form">
-        <input id="teachQ" type="text" placeholder="Soru" required />
-        <input id="teachA" type="text" placeholder="Cevap" required />
-        <div class="teach-actions">
-          <button type="submit" class="send">Öğret</button>
-          <button type="button" id="retrainBtn" class="cta ghost">Yeniden eğit</button>
-        </div>
-      </form>
-    </details>
+    <section class="voice-panel">
+      <button type="button" id="micBtn" class="talk-btn" aria-pressed="false">
+        <span class="talk-ring"></span>
+        <span class="talk-label" id="talkLabel">KONUŞ</span>
+      </button>
+      <div class="voice-toggles">
+        <button type="button" id="convBtn" class="toggle" aria-pressed="false">Sürekli sohbet</button>
+        <button type="button" id="speakToggle" class="toggle" aria-pressed="true">Jarvis sesi</button>
+      </div>
+    </section>
 
     <footer class="dock">
       <form class="composer" id="chatForm">
-        <button type="button" id="micBtn" class="mic" aria-pressed="false" aria-label="Mikrofon">
-          <span class="cta-dot"></span>
-        </button>
-        <input id="messageInput" type="text" autocomplete="off" enterkeyhint="send" placeholder="Her şeyi sorabilirsin…" aria-label="Mesaj" />
+        <input id="messageInput" type="text" autocomplete="off" enterkeyhint="send" placeholder="Yazarak da sorabilirsin…" aria-label="Mesaj" />
         <button type="submit" class="send">Gönder</button>
       </form>
       <div class="dock-tools">
-        <button type="button" id="speakToggle" class="tool" aria-pressed="true">Ses açık</button>
         <button type="button" id="clearBtn" class="tool">Temizle</button>
+        <details class="teach-mini">
+          <summary>Öğret</summary>
+          <form id="teachForm" class="teach-form">
+            <input id="teachQ" type="text" placeholder="Soru" required />
+            <input id="teachA" type="text" placeholder="Cevap" required />
+            <button type="submit" class="send">Kaydet</button>
+          </form>
+        </details>
       </div>
     </footer>
   </div>
