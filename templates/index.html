@@ -3,50 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/static/icon.svg" />
   <title>JARVIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="bg" aria-hidden="true"></div>
-
   <div id="bootGate" class="gate">
-    <p class="gate-brand">JARVIS</p>
-    <p class="gate-hint">Başlamak için dokun</p>
-    <button type="button" id="bootBtn" class="gate-btn">BAŞLAT</button>
+    <canvas id="orbPreview" width="420" height="420" aria-hidden="true"></canvas>
+    <p class="gate-brand">J.A.R.V.I.S.</p>
+    <p class="gate-hint">Sesli ve görüntülü görüşme</p>
+    <button type="button" id="bootBtn" class="gate-btn">ARA</button>
   </div>
 
-  <main class="app">
-    <header class="top">
-      <p class="brand">JARVIS</p>
-      <p class="status" id="statusLine">Hazır</p>
-    </header>
+  <main class="call" id="callUi" hidden>
+    <video id="userCam" playsinline autoplay muted></video>
+    <div class="orb-stage">
+      <canvas id="orb" width="720" height="720" aria-label="Jarvis"></canvas>
+      <p class="brand">J.A.R.V.I.S.</p>
+      <p class="state" id="stateLine">Bağlanıyor…</p>
+    </div>
 
-    <section class="orb-wrap">
-      <canvas id="orb" width="640" height="640" aria-hidden="true"></canvas>
-      <p class="caption" id="liveCaption">Dinlemek için bas</p>
-    </section>
+    <div class="subs" id="subs" aria-live="polite"></div>
 
-    <section class="chat" aria-label="Sohbet">
-      <div class="log" id="log" role="log" aria-live="polite"></div>
-    </section>
-
-    <footer class="bottom">
-      <button type="button" id="micBtn" class="mic" aria-pressed="false" aria-label="Konuş">
-        <span id="talkLabel">KONUŞ</span>
-      </button>
-      <form id="chatForm" class="row">
-        <input id="messageInput" type="text" enterkeyhint="send" placeholder="Yaz…" autocomplete="off" />
-        <button type="submit" class="send">Gönder</button>
-      </form>
-    </footer>
+    <div class="call-bar">
+      <button type="button" id="muteBtn" class="round" aria-pressed="false">Ses</button>
+      <button type="button" id="camBtn" class="round" aria-pressed="true">Kamera</button>
+      <button type="button" id="endBtn" class="round end">Bitir</button>
+    </div>
   </main>
 
   <script src="/static/orb.js"></script>
