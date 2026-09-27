@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JARVIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <div class="grid-overlay" aria-hidden="true"></div>
+
+  <main class="stage">
+    <header class="brand-block">
+      <p class="brand">JARVIS</p>
+      <h1 class="headline">Sıfırdan eğitilen Türkçe asistan</h1>
+      <p class="lede">Konuşun, öğretin, yeniden eğitin. Beyin tamamen bu projede öğrenir.</p>
+      <div class="cta-row">
+        <button type="button" id="micBtn" class="cta primary" aria-pressed="false">
+          <span class="cta-dot"></span>
+          Dinle
+        </button>
+        <button type="button" id="speakToggle" class="cta ghost" aria-pressed="true">Sesli yanıt açık</button>
+        <button type="button" id="retrainBtn" class="cta ghost">Yeniden eğit</button>
+        <a class="cta ghost download-link" href="/static/jarvis.zip" download="jarvis.zip">Zip indir</a>
+      </div>
+    </header>
+
+    <section class="core-wrap" aria-label="Jarvis çekirdeği">
+      <div class="core" id="core">
+        <div class="ring ring-a"></div>
+        <div class="ring ring-b"></div>
+        <div class="ring ring-c"></div>
+        <div class="nucleus"></div>
+      </div>
+      <p class="status-line" id="statusLine">Sistemler çevrimiçi</p>
+    </section>
+
+    <section class="teach-panel" aria-label="Öğretme">
+      <h2>Öğretme paneli</h2>
+      <p class="teach-lede">Yeni soru-cevap ekleyin. Sonra «Yeniden eğit» ile ağırlıkları sıfırdan güncelleyin.</p>
+      <form id="teachForm" class="teach-form">
+        <input id="teachQ" type="text" placeholder="Soru / kalıp" required />
+        <input id="teachA" type="text" placeholder="Cevap" required />
+        <button type="submit" class="send">Öğret</button>
+      </form>
+    </section>
+
+    <section class="console" aria-label="Sohbet">
+      <div class="log" id="log" role="log" aria-live="polite"></div>
+      <form class="composer" id="chatForm">
+        <input
+          id="messageInput"
+          type="text"
+          autocomplete="off"
+          placeholder="Komut, sohbet veya: öğret soru | cevap"
+          aria-label="Mesaj"
+        />
+        <button type="submit" class="send">Gönder</button>
+      </form>
+      <p class="hint">Örnek: «saat kaç» · «10 km mil» · «çevir merhaba» · «şifre üret» · «yeniden eğit»</p>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

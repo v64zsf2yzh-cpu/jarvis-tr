@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Geniş Türkçe eğitim setini üretir."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+OUT = ROOT / "data" / "intents.json"
+
+INTENTS = [
+    {
+        "tag": "selamlama",
+        "patterns": [
+            "merhaba", "selam", "selam jarvis", "merhaba jarvis", "günaydın",
+            "iyi akşamlar", "iyi geceler", "hey jarvis", "naber", "ne haber",
+            "selamlar", "hoş geldin", "merhabalar", "iyi günler", "hey",
+            "alo jarvis", "burada mısın", "uyan jarvis", "selam tip",
+            "merhaba dostum", "günaydın jarvis", "hey orada mısın",
+            "sistem aç", "jarvis açıl", "hazır mısın jarvis", "selam bela",
+            "merhaba efendi", "iyi sabahlar", "selamün aleyküm",
+        ],
+        "responses": [
+            "Merhaba efendim. Jarvis emrinizde.",
+            "Selam. Sistemler çevrimiçi, size nasıl yardımcı olabilirim?",
+            "Günaydın. Bugün sizin için ne yapabilirim?",
+            "Buyurun. Dinliyorum.",
+            "Çevrimiçiyim. Emrinizi bekliyorum.",
+        ],
+    },
+    {
+        "tag": "veda",
+        "patterns": [
+            "görüşürüz", "hoşça kal", "bay bay", "güle güle", "iyi geceler jarvis",
+            "kapat", "sistemi kapat", "çıkış", "sonra görüşürüz", "bye",
+            "veda", "şimdilik bu kadar", "kapanış", "uyku modu", "dinlen jarvis",
+            "kapatalım", "bitir", "son", "çıkıyorum", "ben kaçıyorum",
+        ],
+        "responses": [
+            "Görüşürüz efendim. Sistemler beklemede kalacak.",
+            "Hoşça kalın. İhtiyacınız olduğunda buradayım.",
+            "Anlaşıldı. Jarvis çevrimdışı moda geçiyor. İyi günler.",
+            "Uyku moduna geçiyorum. İyi dinlenmeler.",
+        ],
+    },
+    {
+        "tag": "kimlik",
+        "patterns": [
+            "kimsin", "sen kimsin", "adın ne", "ne yapıyorsun", "ne işe yarıyorsun",
+            "kendini tanıt", "jarvis nedir", "sen bir yapay zeka mısın",
+            "nasıl çalışıyorsun", "seni kim yaptı", "ne kadar akıllısın",
+            "yeteneklerin neler", "sen nestsin", "ne tür bir zekasın",
+            "modelin ne", "beynin nasıl", "eğitimli misin", "sıfırdan mı eğitildin",
+        ],
+        "responses": [
+            "Ben Jarvis. Size yardımcı olmak için sıfırdan eğitilmiş Türkçe bir yapay zeka asistanıyım.",
+            "Adım Jarvis. Niyetlerimi NumPy ile sıfırdan eğitilmiş bir sinir ağı anlar; becerilerim yerel çalışır.",
+            "Iron Man ruhunda bir asistanım. Türkçe konuşurum, öğrenebilirim ve yeniden eğitilebilirim.",
+        ],
+    },
+    {
+        "tag": "saat",
+        "patterns": [
+            "saat kaç", "şu an saat kaç", "saati söyle", "saat nedir", "zamanı söyle",
+            "kaç oldu", "saat kaç oldu", "şimdi saat kaç", "saati öğrenmek istiyorum",
+            "bana saati söyle", "saat bilgisi", "kaçta", "zaman nedir",
+            "local time", "şu anki saat", "saat kaç gösteriyor",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "tarih",
+        "patterns": [
+            "bugün günlerden ne", "tarih ne", "bugünün tarihi", "hangi gündeyiz",
+            "ayın kaçı", "bugün ne", "tarihi söyle", "bugün kaç",
+            "haftanın hangi günü", "takvim ne diyor", "hangi aydayız",
+            "yılın kaçıncı günü", "tarih bilgisi", "bugün ayın kaçı",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "hesap",
+        "patterns": [
+            "hesapla", "kaç eder", "topla", "çıkar", "çarp", "böl", "matematik",
+            "hesap yap", "şu işlemi yap", "sonuç ne", "arti", "eksi", "çarpı",
+            "bölü", "yüzde hesapla", "hesap makinesi", "şu sayıyı hesapla",
+            "matematik sorusu", "işlem yap", "kaçtır", "sonucu söyle",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "hava",
+        "patterns": [
+            "hava nasıl", "hava durumu", "yağmur yağacak mı", "dışarıda hava nasıl",
+            "sıcaklık kaç", "bugün hava nasıl", "yarın hava nasıl", "şemsiye lazım mı",
+            "güneşli mi", "soğuk mu", "hava raporu", "meteoroloji", "yağış var mı",
+            "rüzgarlı mı", "nemli mi",
+        ],
+        "responses": [
+            "Canlı meteoroloji API'm bağlı değil. Yerel hava uygulamanıza bakmanızı öneririm, efendim.",
+            "Hava için gerçek zamanlı veri yok. İsterseniz ileride bir hava API'si ekleyebiliriz.",
+        ],
+    },
+    {
+        "tag": "saka",
+        "patterns": [
+            "şaka yap", "fıkra anlat", "beni güldür", "komik bir şey söyle",
+            "espiri yap", "şaka", "fıkra", "güldür beni", "bir şaka anlat",
+            "mizah yap", "komik ol", "espri", "bir fıkra", "gülmece",
+        ],
+        "responses": [
+            "Neden bilgisayarlar soğuk algınlığına yakalanmaz? Çünkü pencereleri kapalı tutarlar.",
+            "Yapay zekaya kahve getir dedim. Cevabı: Kendi kendine yeten bir sistemim, barista değilim.",
+            "Bir robot restorana girdi. Garson: Ne arzu edersiniz? Robot: Biraz yağ, eklemlerim gıcırdıyor.",
+            "Neden Jarvis asla kaybolmaz? Çünkü her zaman sistemde çevrimiçi kalır.",
+            "İki bit bellek kavga etti. Biri diğerine: Seni sıfırlarım dedi.",
+        ],
+    },
+    {
+        "tag": "yardim",
+        "patterns": [
+            "yardım", "ne yapabilirsin", "komutlar neler", "yardım et",
+            "neler yapıyorsun", "özelliklerin neler", "bana yardım et",
+            "nasıl kullanılır", "menü", "ne sorabilirim", "komut listesi",
+            "rehber", "nasıl öğretebilirim", "eğitim nasıl",
+        ],
+        "responses": [
+            "Saat, tarih, hesap, birim dönüşümü, şaka, motivasyon, bilgi, not, şifre üretme, çeviri sözlüğü ve öğretme modum var. "
+            "Bana bir şey öğretmek için: öğret soru | cevap  yazın. Sonra 'yeniden eğit' deyin.",
+        ],
+    },
+    {
+        "tag": "sistem",
+        "patterns": [
+            "sistem durumu", "durum raporu", "her şey yolunda mı", "sistemler nasıl",
+            "çevrimiçi misin", "hazır mısın", "tanı çalıştır", "sağlık kontrolü",
+            "status", "rapor ver", "diagnostik", "performans", "model durumu",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "motivasyon",
+        "patterns": [
+            "motive et", "motivasyon lazım", "moral ver", "cesaretlendir",
+            "yorgunum", "moralim bozuk", "ilham ver", "güçlü söz söyle",
+            "beni motive et", "pes etmek üzereyim", "moralim yok", "umut ver",
+            "güç ver", "destek ol",
+        ],
+        "responses": [
+            "Stark'ın dediği gibi: sorunlar çözülmek içindir. Bir adım atın; ben yanınızdayım.",
+            "Yorgunluk geçici, ilerleme kalıcıdır. Küçük bir görevle başlayın.",
+            "Zırhı giymek cesaret ister. Siz zaten buradasınız. Devam edin, efendim.",
+            "Bugün mükemmel olmak zorunda değilsiniz; tutarlı olmak yeterli.",
+        ],
+    },
+    {
+        "tag": "tesekkur",
+        "patterns": [
+            "teşekkürler", "teşekkür ederim", "sağ ol", "sağol", "çok teşekkürler",
+            "eyvallah", "mersi", "minnettarım", "helal olsun", "süper teşekkürler",
+            "tşk", "thanks", "eline sağlık",
+        ],
+        "responses": [
+            "Rica ederim efendim. Başka bir şey?",
+            "Ne demek. Yardımcı olabildiysem ne mutlu.",
+            "Her zaman. Jarvis emrinizde.",
+        ],
+    },
+    {
+        "tag": "hatirla",
+        "patterns": [
+            "hatırla", "bunu not et", "aklında tut", "kaydet", "not al",
+            "unutma", "bunu hatırla", "hafızana yaz", "not tut", "sakla bunu",
+            "not ekle", "belleğine yaz", "kayda al",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "hatirlat",
+        "patterns": [
+            "ne hatırlıyorsun", "notlarım ne", "hatırladığın şeyler", "hafızanı söyle",
+            "kayıtlar neler", "notlarımı oku", "ne kaydetmiştin", "hatırlat",
+            "notları göster", "hafıza durumu", "not listesi", "bellek özeti",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "bilgi",
+        "patterns": [
+            "nedir", "kimdir", "anlat", "bilgi ver", "açıkla", "ne demek",
+            "hakkında bilgi", "tanımla", "öğret", "bilgi istiyorum",
+            "ne bilmektesin", "söyle bakalım", "kısaca anlat",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "espri_durum",
+        "patterns": [
+            "nasılsın", "iyi misin", "keyfin nasıl", "ne alemdesin", "işler nasıl",
+            "durumun ne", "mutlu musun", "sıkıldın mı", "nasıl gidiyor",
+            "ne var ne yok", "keyifler nasıl",
+        ],
+        "responses": [
+            "İşlemcilerim serin, modellerim uyanık. Gayet iyiyim. Siz nasılsınız?",
+            "Arc reaktör metaforik anlamda yanıyor. Hazırım. Siz nasılsınız efendim?",
+            "Formdayım. Yeni şeyler öğrenmeye açığım.",
+        ],
+    },
+    {
+        "tag": "ogret",
+        "patterns": [
+            "sana bir şey öğreteceğim", "öğretmek istiyorum", "yeni bilgi ekle",
+            "ders veriyorum", "bunu öğren", "yeni yanıt öğret", "eğitime ekle",
+            "öğrenme modu", "seni eğiteceğim", "bilgi öğret",
+        ],
+        "responses": [
+            "Dinliyorum. Şu formatta yazın: öğret soru | cevap. Örnek: öğret favori rengim ne | Mavi",
+            "Öğretme protokolü hazır. Format: öğret <soru> | <cevap>",
+        ],
+    },
+    {
+        "tag": "yeniden_egit",
+        "patterns": [
+            "yeniden eğit", "tekrar eğit", "modeli eğit", "eğitimi başlat",
+            "beyni yenile", "sıfırdan eğit", "retrain", "öğrendiklerini işle",
+            "ağırlıkları güncelle", "eğitim çalıştır",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "ceviri",
+        "patterns": [
+            "çevir", "tercüme et", "ingilizceye çevir", "türkçeye çevir",
+            "translate", "ne demek ingilizce", "ingilizcesi ne", "türkçesi ne",
+            "bu kelimeyi çevir", "çeviri yap",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "birim",
+        "patterns": [
+            "kaç km", "kaç mil", "santigrat", "fahrenhayt", "kaç kilogram",
+            "kaç pound", "birim dönüştür", "çevir derece", "metre kaç",
+            "cm kaç inch", "dönüştür", "birim hesapla",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "sifre",
+        "patterns": [
+            "şifre üret", "parola oluştur", "güçlü şifre", "random password",
+            "şifre yarat", "güvenli parola", "password üret", "şifre lazım",
+            "bir şifre ver", "güvenli şifre oluştur",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "yazi",
+        "patterns": [
+            "büyük harf yap", "küçük harf yap", "ters çevir", "kaç kelime",
+            "kaç harf", "metni ters çevir", "yazıyı büyüt", "yazıyı küçült",
+            "kelime sayısı", "karakter sayısı", "metin analizi",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "rastgele",
+        "patterns": [
+            "rastgele sayı", "zar at", "yazı tura", "karar ver", "seç",
+            "random", "şansımı dene", "bir sayı söyle", "zar", "tura mı yazı mı",
+            "rastgele seç", "hangisi",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "ad_kaydet",
+        "patterns": [
+            "adım", "ismim", "bana şöyle hitap et", "benim adım", "adımı kaydet",
+            "beni şöyle çağır", "ismimi hatırla", "adımı unutma",
+        ],
+        "responses": [],
+    },
+    {
+        "tag": "ipucu",
+        "patterns": [
+            "ipucu ver", "üretkenlik ipucu", "yazılım ipucu", "hayat tavsiyesi",
+            "tavsiye ver", "öneri sun", "pratik bilgi", "kısa ipucu",
+        ],
+        "responses": [
+            "İpucu: Büyük işleri 25 dakikalık parçalara bölün; sonra kısa mola verin.",
+            "İpucu: Kodu yazmadan önce sorunu bir cümleyle tanımlayın.",
+            "İpucu: Uyku, kahveden daha güçlü bir performans artırıcıdır.",
+            "İpucu: Öğrendiğiniz her şeyi kendi cümlelerinizle yeniden anlatın.",
+        ],
+    },
+]
+
+OUT.parent.mkdir(parents=True, exist_ok=True)
+with open(OUT, "w", encoding="utf-8") as f:
+    json.dump({"intents": INTENTS}, f, ensure_ascii=False, indent=2)
+
+n_pat = sum(len(i["patterns"]) for i in INTENTS)
+print(f"Yazıldı: {OUT} | {len(INTENTS)} niyet | {n_pat} örnek cümle")

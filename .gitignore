@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.Python
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+static/jarvis.zip

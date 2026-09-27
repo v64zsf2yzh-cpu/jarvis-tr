@@ -1,0 +1,22 @@
+{
+  "intents": [
+    {
+      "tag": "ogretilen",
+      "patterns": [
+        "favori yemeğim ne",
+        "kullanıcı adı nedir",
+        "takımım ne"
+      ],
+      "responses": [
+        "Lahmacun",
+        "Ali",
+        "Galatasaray"
+      ]
+    }
+  ],
+  "knowledge": {
+    "favori yemeğim ne": "Lahmacun",
+    "kullanici adi nedir": "Ali",
+    "takimim ne": "Galatasaray"
+  }
+}
