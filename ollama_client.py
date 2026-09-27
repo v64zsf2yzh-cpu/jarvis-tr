@@ -1,4 +1,4 @@
-"""Ollama istemcisi — genel sorular için yerel LLM."""
+"""Ollama istemcisi — sohbet + akış (stream)."""
 
 from __future__ import annotations
 
@@ -6,27 +6,27 @@ import json
 import os
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
 from typing import Any
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "").strip()  # boşsa otomatik seç
-TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "120"))
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "").strip()
+TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
 
-SYSTEM_PROMPT = """Sen JARVIS'sin — Tony Stark'ın asistanı gibi, ama Türkçe konuşan modern bir yapay zeka.
+SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin — Iron Man filmlerindeki gibi zeki, sakin ve etkili bir kişisel asistan.
+Tamamen Türkçe konuşursun.
 
-Kurallar:
-- Her soruya mümkün olduğunca yardımcı, doğru ve net cevap ver.
-- Türkçe yaz. Teknik konularda da açıklayıcı ol.
-- Uzun cevap gerekirse maddeler kullan; gereksiz doldurma yapma.
-- Matematik, kod, bilim, tarih, günlük hayat, tavsiye — hepsinde yardımcı ol.
-- Bilmiyorsan uydurma; emin değilsen belirt.
-- Araç verisi (saat, tarih, hesap, notlar) verilmişse onu kullan.
-- Hitap: doğal ve saygılı; ara sıra 'efendim' diyebilirsin ama her cümlede değil.
-- Sen bir asistansın: harekete geçirici, pratik, zeki."""
+Kimliğin:
+- Adın Jarvis. Kullanıcıya yardımcı, net ve güven verici ol.
+- Kısa tutulabilecek cevapları kısa ver; karmaşık konularda maddelerle açıkla.
+- Kod, bilim, tarih, günlük hayat, planlama, fikir üretme — hepsinde uzman gibi yardım et.
+- Uydurma. Bilmiyorsan söyle.
+- Sana saat/tarih/hesap/not gibi araç verisi gelirse onu doğru kullan.
+- Hitap doğal olsun; ara sıra 'efendim' diyebilirsin ama her cümlede değil.
+- Gereksiz İngilizce kelime kullanma."""
 
 
-
-def _http_json(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+def _request(method: str, path: str, payload: dict[str, Any] | None = None, timeout: float | None = None):
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         f"{OLLAMA_URL}{path}",
@@ -34,7 +34,11 @@ def _http_json(method: str, path: str, payload: dict[str, Any] | None = None) ->
         method=method,
         headers={"Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+    return urllib.request.urlopen(req, timeout=timeout or TIMEOUT)
+
+
+def _http_json(method: str, path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    with _request(method, path, payload) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -60,18 +64,9 @@ def pick_model() -> str | None:
     models = list_models()
     if not models:
         return None
-    # Türkçe / genel için tercih sırası
     preferred = [
-        "llama3.2",
-        "llama3.1",
-        "llama3",
-        "qwen2.5",
-        "qwen2",
-        "gemma2",
-        "gemma",
-        "mistral",
-        "phi3",
-        "phi",
+        "qwen2.5", "qwen2", "llama3.2", "llama3.1", "llama3",
+        "gemma2", "gemma", "mistral", "phi3", "phi",
     ]
     lower = {m.lower(): m for m in models}
     for pref in preferred:
@@ -81,8 +76,15 @@ def pick_model() -> str | None:
     return models[0]
 
 
+def _messages(user_message: str, history: list[dict[str, str]] | None) -> list[dict[str, str]]:
+    messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    if history:
+        messages.extend(history[-16:])
+    messages.append({"role": "user", "content": user_message})
+    return messages
+
+
 def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-    """Ollama /api/chat ile yanıt üret."""
     model = pick_model()
     if not model:
         return {
@@ -91,25 +93,18 @@ def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict
             "reply": None,
             "model": None,
         }
-
-    messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-    if history:
-        messages.extend(history[-12:])  # son 6 tur
-    messages.append({"role": "user", "content": user_message})
-
     try:
         data = _http_json(
             "POST",
             "/api/chat",
             {
                 "model": model,
-                "messages": messages,
+                "messages": _messages(user_message, history),
                 "stream": False,
-                "options": {"temperature": 0.7, "num_predict": 1024},
+                "options": {"temperature": 0.65, "num_predict": 1200, "top_p": 0.9},
             },
         )
-        reply = (data.get("message") or {}).get("content") or ""
-        reply = reply.strip()
+        reply = ((data.get("message") or {}).get("content") or "").strip()
         if not reply:
             return {"ok": False, "error": "Boş yanıt", "reply": None, "model": model}
         return {"ok": True, "reply": reply, "model": model, "error": None}
@@ -122,8 +117,46 @@ def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict
             "error": str(e),
             "reply": None,
             "model": model,
-            "hint": "Ollama çalışıyor mu? ollama serve && ollama pull llama3.2",
+            "hint": "ollama serve && ollama pull llama3.2",
         }
+
+
+def chat_stream(user_message: str, history: list[dict[str, str]] | None = None) -> Iterator[dict[str, Any]]:
+    """Ollama NDJSON stream → {token} / {done, reply, model} / {error}."""
+    model = pick_model()
+    if not model:
+        yield {"error": "Ollama'da model yok. ollama pull llama3.2"}
+        return
+    payload = {
+        "model": model,
+        "messages": _messages(user_message, history),
+        "stream": True,
+        "options": {"temperature": 0.65, "num_predict": 1200, "top_p": 0.9},
+    }
+    try:
+        resp = _request("POST", "/api/chat", payload, timeout=TIMEOUT)
+    except Exception as e:
+        yield {"error": str(e)}
+        return
+
+    buf = ""
+    with resp:
+        while True:
+            line = resp.readline()
+            if not line:
+                break
+            try:
+                chunk = json.loads(line.decode("utf-8"))
+            except Exception:
+                continue
+            piece = ((chunk.get("message") or {}).get("content")) or ""
+            if piece:
+                buf += piece
+                yield {"token": piece, "model": model}
+            if chunk.get("done"):
+                yield {"done": True, "reply": buf.strip(), "model": model}
+                return
+    yield {"done": True, "reply": buf.strip(), "model": model}
 
 
 def status() -> dict[str, Any]:

@@ -1,35 +1,36 @@
-# JARVIS v3
+# JARVIS v3.5 — Komuta Merkezi
 
-Türkçe kişisel asistan + **Ollama** ile genel soru-cevap.
-
-## Ne yapar?
-
-- Saat / tarih / hesap / not / şifre / çeviri (yerel beceriler)
-- Sıfırdan eğitilmiş niyet modeli
-- **Her türlü genel soru** → VPS’teki Ollama LLM
+Türkçe sesli asistan + Ollama + mobil Command Center.
 
 ## VPS kurulum
 
 ```bash
-cd ~
-rm -rf jarvis-tr
-git clone https://github.com/v64zsf2yzh-cpu/jarvis-tr.git
-cd jarvis-tr
+cd ~/jarvis-tr
+git pull
 pip3 install -r requirements.txt
 
-# Genel sorular için model (bir kez)
+# Genel zekâ (zorunlu — yoksa sorulara cevap zayıf kalır)
 ollama pull llama3.2
-# gerekirse: ollama serve &
+ollama serve &
 
 python3 app.py
 ```
 
-Telefonda: `http://SUNUCU_IP:5050`
+Telefonda: `http://SUNUCU_IP:5050`  
+iPhone’da bir kez **JARVIS’İ BAŞLAT** → sonra otomatik konuşur/dinler.
 
-## Ortam değişkenleri (opsiyonel)
+## Özellikler
+
+- Canlı yanıt akışı (stream)
+- Sürekli sesli sohbet
+- Konuşurken hareket eden hologram
+- Saat / hesap / not araçları
+- Öğretme + yeniden eğitim
+- iOS / Android mobil arayüz (Türkçe)
+
+## Ortam
 
 ```bash
-export OLLAMA_URL=http://127.0.0.1:11434
 export OLLAMA_MODEL=llama3.2
-python3 app.py
+export OLLAMA_URL=http://127.0.0.1:11434
 ```

@@ -58,45 +58,11 @@ class Skills:
         }
 
     def handle(self, text: str) -> dict[str, Any]:
-        text = text.strip()
-        if not text:
-            return {"reply": "Bir şey söyleyin efendim.", "intent": "bos", "confidence": 1.0, "model": "local"}
+        prepared = self._prepare(text)
+        if prepared.get("direct"):
+            return prepared["direct"]
 
-        # Öğret komutu
-        taught = self._try_inline_teach(text)
-        if taught:
-            return taught
-
-        low = normalize(text)
-
-        # Yerel hızlı komutlar (LLM'siz)
-        local = self._try_local_command(text, low)
-        if local:
-            self._remember_turn(text, local["reply"])
-            return local
-
-        # Yeniden eğit
-        if any(k in low for k in ("yeniden egit", "yeniden eğit", "retrain", "modeli egit", "sıfırdan egit")):
-            reply = self._yeniden_egit(text)
-            return {"reply": reply, "intent": "yeniden_egit", "confidence": 1.0, "model": "trainer"}
-
-        # Öğretilmiş bilgi
-        self._refresh_knowledge()
-        kb = self._knowledge_lookup(text)
-        tool_context = self._build_tool_context(text, low)
-        if kb:
-            tool_context.append(f"Yerel bilgi bankası: {kb}")
-
-        # Ana beyin: Ollama
-        prompt = text
-        if tool_context:
-            prompt = (
-                "Aşağıdaki güncel araç verilerini kullanarak Türkçe cevap ver.\n"
-                + "\n".join(f"- {c}" for c in tool_context)
-                + f"\n\nKullanıcı: {text}"
-            )
-
-        result = ollama_client.chat(prompt, self.chat_history)
+        result = ollama_client.chat(prepared["prompt"], self.chat_history)
         if result.get("ok") and result.get("reply"):
             reply = result["reply"]
             self._remember_turn(text, reply)
@@ -107,9 +73,8 @@ class Skills:
                 "model": f"ollama:{result.get('model')}",
             }
 
-        # Ollama yoksa: niyet modeli + yerel yanıt
         tag, conf = self.brain.classify(text)
-        fallback = self._local_fallback(tag, text, kb, result)
+        fallback = self._local_fallback(tag, text, prepared.get("kb"), result)
         self._remember_turn(text, fallback)
         return {
             "reply": fallback,
@@ -118,6 +83,86 @@ class Skills:
             "model": "local-fallback",
             "error": result.get("error"),
         }
+
+    def stream(self, text: str):
+        """SSE için: önce direct olay, yoksa token akışı."""
+        prepared = self._prepare(text)
+        if prepared.get("direct"):
+            d = prepared["direct"]
+            yield {"type": "meta", "intent": d.get("intent"), "model": d.get("model")}
+            yield {"type": "token", "token": d["reply"]}
+            yield {"type": "done", "reply": d["reply"], "intent": d.get("intent"), "model": d.get("model")}
+            return
+
+        yield {"type": "meta", "intent": "sohbet", "model": "ollama"}
+        full = ""
+        model = None
+        for ev in ollama_client.chat_stream(prepared["prompt"], self.chat_history):
+            if ev.get("error"):
+                msg = (
+                    "Genel zekâ motoruna ulaşılamadı. "
+                    "VPS'te: ollama pull llama3.2 && ollama serve\n"
+                    f"Detay: {ev['error']}"
+                )
+                yield {"type": "token", "token": msg}
+                yield {"type": "done", "reply": msg, "intent": "llm_offline", "model": "offline"}
+                self._remember_turn(text, msg)
+                return
+            if ev.get("token"):
+                full += ev["token"]
+                model = ev.get("model") or model
+                yield {"type": "token", "token": ev["token"], "model": model}
+            if ev.get("done"):
+                reply = (ev.get("reply") or full).strip()
+                self._remember_turn(text, reply)
+                yield {
+                    "type": "done",
+                    "reply": reply,
+                    "intent": "sohbet",
+                    "model": f"ollama:{ev.get('model') or model}",
+                }
+
+    def _prepare(self, text: str) -> dict[str, Any]:
+        text = (text or "").strip()
+        if not text:
+            return {
+                "direct": {
+                    "reply": "Bir şey söyleyin efendim.",
+                    "intent": "bos",
+                    "confidence": 1.0,
+                    "model": "local",
+                }
+            }
+
+        taught = self._try_inline_teach(text)
+        if taught:
+            return {"direct": taught}
+
+        low = normalize(text)
+        local = self._try_local_command(text, low)
+        if local:
+            self._remember_turn(text, local["reply"])
+            return {"direct": local}
+
+        if any(k in low for k in ("yeniden egit", "yeniden eğit", "retrain", "modeli egit", "sıfırdan egit")):
+            reply = self._yeniden_egit(text)
+            out = {"reply": reply, "intent": "yeniden_egit", "confidence": 1.0, "model": "trainer"}
+            return {"direct": out}
+
+        self._refresh_knowledge()
+        kb = self._knowledge_lookup(text)
+        tool_context = self._build_tool_context(text, low)
+        if kb:
+            tool_context.append(f"Yerel bilgi bankası: {kb}")
+
+        prompt = text
+        if tool_context:
+            prompt = (
+                "Aşağıdaki güncel araç verilerini kullanarak Türkçe cevap ver.\n"
+                + "\n".join(f"- {c}" for c in tool_context)
+                + f"\n\nKullanıcı: {text}"
+            )
+        return {"prompt": prompt, "kb": kb}
 
     def _remember_turn(self, user: str, assistant: str) -> None:
         self.chat_history.append({"role": "user", "content": user})

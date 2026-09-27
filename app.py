@@ -79,6 +79,29 @@ def chat():
     return jsonify(skills.handle(text))
 
 
+@app.post("/api/chat/stream")
+def chat_stream():
+    """Canlı token akışı (NDJSON)."""
+    import json as _json
+
+    from flask import Response, stream_with_context
+
+    data = request.get_json(silent=True) or {}
+    text = (data.get("message") or "").strip()
+    if not text:
+        return jsonify({"error": "Boş mesaj"}), 400
+
+    def generate():
+        for ev in skills.stream(text):
+            yield _json.dumps(ev, ensure_ascii=False) + "\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.post("/api/teach")
 def teach():
     data = request.get_json(silent=True) or {}
@@ -116,7 +139,7 @@ def status():
     return jsonify(
         {
             "name": "Jarvis",
-            "version": 3,
+            "version": "3.5",
             "language": "tr",
             "trained_from_scratch": True,
             "accuracy": skills.brain.meta.get("accuracy"),
@@ -128,6 +151,30 @@ def status():
             "memory_count": len(skills.memory),
             "user_name": skills.user_name,
             "ollama": ollama_client.status(),
+            "features": ["stream", "voice", "command-center", "tools"],
+        }
+    )
+
+
+@app.get("/manifest.webmanifest")
+def manifest():
+    return jsonify(
+        {
+            "name": "JARVIS Komuta Merkezi",
+            "short_name": "JARVIS",
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#020617",
+            "theme_color": "#020617",
+            "lang": "tr",
+            "icons": [
+                {
+                    "src": "/static/icon.svg",
+                    "sizes": "any",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable",
+                }
+            ],
         }
     )
 
@@ -137,9 +184,10 @@ if __name__ == "__main__":
     ip = local_ip()
     print()
     print("=" * 50)
-    print("  JARVIS arayüzü hazır")
+    print("  JARVIS Komuta Merkezi v3.5")
     print(f"  Telefondan aç : http://{ip}:{port}")
     print(f"  Bu cihazda    : http://127.0.0.1:{port}")
+    print("  Ollama         : http://127.0.0.1:11434")
     print("=" * 50)
     print()
     app.run(host="0.0.0.0", port=port, debug=False)
