@@ -3,76 +3,63 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#030711" />
+  <meta name="theme-color" content="#050201" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>JARVIS</title>
+  <title>J.A.R.V.I.S.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-  <div class="atmosphere" aria-hidden="true"></div>
-  <div class="hud-frame" aria-hidden="true"></div>
-  <div class="grid-overlay" aria-hidden="true"></div>
+  <div class="vignette" aria-hidden="true"></div>
 
   <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-lockup">
+    <header class="hud-top">
+      <div class="brand-block">
         <p class="brand">J.A.R.V.I.S.</p>
-        <p class="status-line" id="statusLine">SİSTEM HAZIR</p>
+        <p class="status-line" id="statusLine">INITIALIZING</p>
       </div>
-      <div class="hud-meta" id="hudMeta">
+      <div class="hud-bars" aria-hidden="true">
+        <div class="bar"><i id="barA"></i></div>
+        <div class="bar"><i id="barB"></i></div>
+        <div class="bar"><i id="barC"></i></div>
+      </div>
+      <div class="hud-meta">
         <span id="modelTag">MODEL —</span>
-        <span id="voiceTag">SES AKTİF</span>
+        <span id="voiceTag">VOICE READY</span>
       </div>
     </header>
 
-    <section class="reactor-stage" aria-label="Jarvis çekirdeği">
-      <div class="core hero" id="core">
-        <div class="ring ring-outer"></div>
-        <div class="ring ring-a"></div>
-        <div class="ring ring-b"></div>
-        <div class="ring ring-c"></div>
-        <div class="nucleus"></div>
-        <div class="pulse-wave"></div>
-      </div>
-      <p class="reactor-caption" id="reactorCaption">Dinlemek için basılı tutun</p>
+    <section class="orb-stage">
+      <canvas id="orb" width="640" height="640" aria-label="Jarvis hologram"></canvas>
+      <p class="reactor-caption" id="reactorCaption">Dokunarak konuş</p>
     </section>
 
-    <section class="console" aria-label="Sohbet">
+    <section class="console">
       <div class="log" id="log" role="log" aria-live="polite"></div>
     </section>
 
-    <section class="voice-panel">
+    <section class="controls">
       <button type="button" id="micBtn" class="talk-btn" aria-pressed="false">
-        <span class="talk-ring"></span>
-        <span class="talk-label" id="talkLabel">KONUŞ</span>
+        <span id="talkLabel">KONUŞ</span>
       </button>
-      <div class="voice-toggles">
+      <div class="toggles">
         <button type="button" id="convBtn" class="toggle" aria-pressed="false">Sürekli sohbet</button>
         <button type="button" id="speakToggle" class="toggle" aria-pressed="true">Jarvis sesi</button>
+        <button type="button" id="clearBtn" class="toggle ghost">Temizle</button>
       </div>
     </section>
 
     <footer class="dock">
       <form class="composer" id="chatForm">
-        <input id="messageInput" type="text" autocomplete="off" enterkeyhint="send" placeholder="Yazarak da sorabilirsin…" aria-label="Mesaj" />
+        <input id="messageInput" type="text" autocomplete="off" enterkeyhint="send" placeholder="Yazarak sor…" />
         <button type="submit" class="send">Gönder</button>
       </form>
-      <div class="dock-tools">
-        <button type="button" id="clearBtn" class="tool">Temizle</button>
-        <details class="teach-mini">
-          <summary>Öğret</summary>
-          <form id="teachForm" class="teach-form">
-            <input id="teachQ" type="text" placeholder="Soru" required />
-            <input id="teachA" type="text" placeholder="Cevap" required />
-            <button type="submit" class="send">Kaydet</button>
-          </form>
-        </details>
-      </div>
     </footer>
   </div>
+
+  <script src="/static/orb.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
