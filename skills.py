@@ -377,7 +377,8 @@ class Skills:
         if "kelime" in low or "harf" in low or "karakter" in low or "analiz" in low:
             src = body or text
             words = tokenize(src)
-            return f"Kelime: {len(words)} · karakter (boşluksuz): {len(re.sub(r'\s+', '', src))}"
+            chars = len(re.sub(r"\s+", "", src))
+            return f"Kelime: {len(words)} · karakter (boşluksuz): {chars}"
         if not body:
             return "Metni komutla birlikte yazın. Örnek: büyük harf yap merhaba dünya"
         if "büyük" in low or "büyüt" in low:
