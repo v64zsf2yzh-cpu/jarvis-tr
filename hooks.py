@@ -39,17 +39,19 @@ def install(skills) -> None:
         )
         if hit:
             return {"direct": hit}
-        try:
-            import importlib
-            importlib.reload(learned_skills)
-            learned = learned_skills.try_handle(raw, low)
-        except Exception:
-            learned = None
-        if learned and isinstance(learned, dict) and learned.get("reply"):
-            learned.setdefault("intent", "learned")
-            learned.setdefault("model", "learned_skills")
-            learned.setdefault("confidence", 1.0)
-            return {"direct": learned}
+        for modname in ("learned_skills", "autonomy"):
+            try:
+                import importlib
+                mod = importlib.import_module(modname)
+                importlib.reload(mod)
+                learned = mod.try_handle(raw, low)
+            except Exception:
+                learned = None
+            if learned and isinstance(learned, dict) and learned.get("reply"):
+                learned.setdefault("intent", modname)
+                learned.setdefault("model", modname)
+                learned.setdefault("confidence", 1.0)
+                return {"direct": learned}
         return orig(text)
 
     skills._prepare = wrapped
