@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis v4.2 — sesli iş asistanı."""
+"""Jarvis v4.3 — sesli iş asistanı + kapı hattı."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 
+import doorbell
 import evolve
 import hooks
 import memory
@@ -40,7 +41,6 @@ def boot() -> Skills:
     skills = Skills(brain)
 
     def _retrain():
-        print("Yeniden eğitim (sıfırdan)...")
         meta = train(epochs=1600, lr=0.08, hidden=[160, 96, 48])
         skills.brain = JarvisBrain()
         return meta
@@ -48,7 +48,8 @@ def boot() -> Skills:
     skills.set_retrain(_retrain)
     hooks.install(skills)
     evolve.start(_retrain, interval_sec=180)
-    print(f"Jarvis v4.2 | acc={brain.meta.get('accuracy', 0):.3f}")
+    doorbell.start(interval_sec=12)
+    print(f"Jarvis v4.3 | acc={brain.meta.get('accuracy', 0):.3f}")
     return skills
 
 
@@ -92,11 +93,8 @@ def chat_stream():
         for ev in skills.stream(text):
             yield _json.dumps(ev, ensure_ascii=False) + "\n"
 
-    return Response(
-        stream_with_context(generate()),
-        mimetype="application/x-ndjson",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return Response(stream_with_context(generate()), mimetype="application/x-ndjson",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.post("/api/teach")
@@ -135,10 +133,7 @@ def status():
     prefs = snap.get("prefs") or {}
     return jsonify({
         "name": "Jarvis",
-        "version": "4.2",
-        "language": "tr",
-        "accuracy": skills.brain.meta.get("accuracy"),
-        "samples": skills.brain.meta.get("samples"),
+        "version": "4.3",
         "user_name": snap.get("user_name") or skills.user_name,
         "city": snap.get("city"),
         "job": prefs.get("job"),
@@ -148,19 +143,15 @@ def status():
         "evolve": ev,
         "selfcode": selfcode.status(),
         "nudge": nudge.status_blob(),
+        "doorbell": doorbell.status(),
     })
 
 
 @app.get("/manifest.webmanifest")
 def manifest():
     return jsonify({
-        "name": "JARVIS",
-        "short_name": "JARVIS",
-        "start_url": "/",
-        "display": "standalone",
-        "background_color": "#02040a",
-        "theme_color": "#02040a",
-        "lang": "tr",
+        "name": "JARVIS", "short_name": "JARVIS", "start_url": "/",
+        "display": "standalone", "background_color": "#02040a", "theme_color": "#02040a", "lang": "tr",
         "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}],
     })
 
@@ -168,5 +159,5 @@ def manifest():
 if __name__ == "__main__":
     port = 5050
     ip = local_ip()
-    print("JARVIS v4.2", f"http://{ip}:{port}", f"http://127.0.0.1:{port}")
+    print("JARVIS v4.3", f"http://{ip}:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
