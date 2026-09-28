@@ -67,9 +67,12 @@ def _maybe_profile(user: str) -> None:
     m = re.search(r"(?:benim adım|adım|ismim)\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)", user, flags=re.I)
     if m:
         memory.set_profile(user_name=m.group(1).strip().title())
-    m = re.search(r"(?:şehirim|yaşadığım yer|yaşıyorum|şehir)\s*:?\s*([A-Za-zÇĞİÖŞÜçğıöşü]+)", user, flags=re.I)
+    m = re.search(r"(?:şehrim|yaşadığım yer|yaşıyorum|şehir)\s*:?\s*([A-Za-zÇĞİÖŞÜçğıöşü]+)", user, flags=re.I)
     if m:
         memory.set_profile(city=m.group(1).strip().title())
+    m = re.search(r"(?:işim|mesleğim)\s+(.+)$", user, flags=re.I)
+    if m:
+        memory.set_profile(prefs={"job": m.group(1).strip(" .!")})
 
 
 def _maybe_correction(user: str, reply: str) -> None:
