@@ -6,6 +6,7 @@ from brain import normalize
 import doorbell
 import extra
 import fx
+import inbox
 import news
 import persona
 import research
@@ -30,6 +31,7 @@ def install(skills) -> None:
             return {"direct": selfcode.cycle_now(reason=raw)}
         hit = (
             doorbell.try_door(raw, low)
+            or inbox.try_inbox(raw, low)
             or persona.try_persona(raw, low)
             or extra.try_extra(raw, low)
             or tools.try_reminder(raw, low)
