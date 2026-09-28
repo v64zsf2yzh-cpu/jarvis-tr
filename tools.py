@@ -1,4 +1,4 @@
-"""Yerel araçlar — hava, birim, çeviri, rastgele, yazı."""
+"""Yerel araçlar — hava, birim, çeviri, rastgele, yazı, hatırlatıcı."""
 
 from __future__ import annotations
 
@@ -7,32 +7,26 @@ import random
 import re
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta
 from typing import Any
+
+import memory
 
 GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
 
 _TR_EN = {
-    "merhaba": "hello",
-    "selam": "hi",
-    "teşekkürler": "thank you",
-    "lütfen": "please",
-    "evet": "yes",
-    "hayır": "no",
-    "günaydın": "good morning",
-    "iyi geceler": "good night",
-    "nasılsın": "how are you",
-    "ben": "I",
-    "sen": "you",
-    "su": "water",
-    "ekmek": "bread",
-    "kitap": "book",
-    "ev": "house",
-    "araba": "car",
-    "bugün": "today",
-    "yarın": "tomorrow",
-    "saat": "hour",
-    "tarih": "date",
+    "merhaba": "hello", "selam": "hi", "teşekkürler": "thank you", "lütfen": "please",
+    "evet": "yes", "hayır": "no", "günaydın": "good morning", "iyi geceler": "good night",
+    "nasılsın": "how are you", "ben": "I", "sen": "you", "su": "water", "ekmek": "bread",
+    "kitap": "book", "ev": "house", "araba": "car", "bugün": "today", "yarın": "tomorrow",
+    "saat": "hour", "tarih": "date",
 }
+
+CITIES = (
+    "istanbul", "ankara", "izmir", "bursa", "antalya", "adana", "konya", "trabzon",
+    "eskişehir", "gaziantep", "kayseri", "mersin", "diyarbakır", "samsun", "denizli",
+    "sakarya", "kocaeli", "gebze", "van", "erzurum", "malatya", "hatay", "tekirdağ",
+)
 
 
 def weather(city: str | None = None) -> str:
@@ -60,8 +54,7 @@ def weather(city: str | None = None) -> str:
         hum = cur.get("relative_humidity_2m")
         wind = cur.get("wind_speed_10m")
         code = int(cur.get("weather_code") or 0)
-        desc = _wmo(code)
-        return f"{label}: {temp}°C, {desc}. Nem %{hum}, rüzgar {wind} km/s."
+        return f"{label}: {temp}°C, {_wmo(code)}. Nem %{hum}, rüzgar {wind} km/s."
     except Exception as e:
         return f"Hava verisine ulaşılamadı ({e.__class__.__name__})."
 
@@ -83,7 +76,7 @@ def extract_city(text: str, fallback: str | None = None) -> str:
     )
     if m:
         return m.group(1)
-    m = re.search(r"\b(?:istanbul|ankara|izmir|bursa|antalya|adana|konya|trabzon|eskişehir)\b", text, flags=re.I)
+    m = re.search(r"\b(?:" + "|".join(CITIES) + r")\b", text, flags=re.I)
     if m:
         return m.group(0).title()
     return fallback or "Istanbul"
@@ -122,7 +115,7 @@ def translate_lite(text: str) -> str | None:
         " ", raw, flags=re.I,
     ).strip(" :.-")
     if not cleaned:
-        return "Çevrilecek ifadeyi yazın. Örnek: merhaba çevir"
+        return "Çevrilecek ifadeyi söyleyin."
     words = cleaned.lower().split()
     mapped = [_TR_EN.get(w.strip(".,!?"), None) for w in words]
     if all(mapped):
@@ -173,5 +166,51 @@ def random_fun(text: str) -> str | None:
     return None
 
 
-def city_from_profile(memory: dict[str, Any]) -> str | None:
-    return memory.get("city")
+def try_reminder(text: str, low: str) -> dict[str, Any] | None:
+    if any(k in low for k in ("hatirlatmalarim", "hatırlatmalarım", "alarmlarim", "alarmlarım", "ne hatirlatacaksin")):
+        items = (memory.load().get("prefs") or {}).get("reminders") or []
+        if not items:
+            return {"reply": "Kayıtlı hatırlatıcı yok, efendim.", "intent": "hatirlatma", "model": "tool:hatirlatma", "confidence": 1.0}
+        lines = [f"{r.get('when', '?')} — {r.get('text', '')}" for r in items[-8:]]
+        return {"reply": "Hatırlatıcılar: " + "; ".join(lines), "intent": "hatirlatma", "model": "tool:hatirlatma", "confidence": 1.0}
+    if not any(k in low for k in ("hatirlat", "hatırlat", "alarm kur", "dakika sonra", "saat sonra")):
+        return None
+    minutes = None
+    m = re.search(r"(\d+)\s*dakika", low)
+    if m:
+        minutes = int(m.group(1))
+    m = re.search(r"(\d+)\s*saat", low)
+    if m:
+        minutes = int(m.group(1)) * 60
+    m = re.search(r"saat\s+(\d{1,2})(?:[:.](\d{2}))?", low)
+    when = None
+    if minutes is not None:
+        when = (datetime.now() + timedelta(minutes=max(1, min(minutes, 24 * 60)))).strftime("%H:%M")
+    elif m:
+        hh = int(m.group(1))
+        mm = int(m.group(2) or 0)
+        when = f"{hh:02d}:{mm:02d}"
+    else:
+        when = datetime.now().strftime("%H:%M")
+    body = re.sub(
+        r"\b(hatırlat|hatirlat|alarm kur|bana|dakika sonra|saat sonra|saat \d{1,2}([:.]\d{2})?)\b",
+        " ", text, flags=re.I,
+    )
+    body = re.sub(r"\d+", " ", body)
+    body = re.sub(r"\s+", " ", body).strip(" .,:-") or "hatırlatıcı"
+    def _m(d):
+        prefs = d.setdefault("prefs", {})
+        items = prefs.setdefault("reminders", [])
+        items.append({"text": body, "when": when, "at": datetime.now().isoformat(timespec="seconds")})
+        prefs["reminders"] = items[-30:]
+    memory.update(_m)
+    return {
+        "reply": f"Tamam. {when} için hatırlatıcı: {body}.",
+        "intent": "hatirlatma",
+        "model": "tool:hatirlatma",
+        "confidence": 1.0,
+    }
+
+
+def city_from_profile(mem: dict[str, Any]) -> str | None:
+    return mem.get("city")
