@@ -1,5 +1,6 @@
 const bootGate = document.getElementById("bootGate");
 const bootBtn = document.getElementById("bootBtn");
+const textBtn = document.getElementById("textBtn");
 const callUi = document.getElementById("callUi");
 const userCam = document.getElementById("userCam");
 const stateLine = document.getElementById("stateLine");
@@ -7,6 +8,10 @@ const subs = document.getElementById("subs");
 const muteBtn = document.getElementById("muteBtn");
 const camBtn = document.getElementById("camBtn");
 const endBtn = document.getElementById("endBtn");
+const logBtn = document.getElementById("logBtn");
+const chatForm = document.getElementById("chatForm");
+const chatInput = document.getElementById("chatInput");
+const chatLog = document.getElementById("chatLog");
 
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
@@ -17,6 +22,7 @@ let continuous = true;
 let recognizing = false;
 let busy = false;
 let started = false;
+let textOnly = false;
 let recognition = null;
 let jarvisVoice = null;
 let audioCtx = null;
@@ -27,6 +33,15 @@ let mediaStream = null;
 function setOrb(mode) { window.JarvisOrb?.setMode(mode); }
 function setState(t) { stateLine.textContent = t; }
 function setSubs(t) { subs.textContent = t || ""; }
+
+function addLog(who, text) {
+  if (!chatLog || !text) return;
+  const p = document.createElement("p");
+  p.className = who === "u" ? "u" : "j";
+  p.textContent = (who === "u" ? "Siz: " : "Jarvis: ") + text;
+  chatLog.appendChild(p);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
 
 function pickVoice() {
   const voices = window.speechSynthesis?.getVoices?.() || [];
@@ -58,8 +73,8 @@ function unlockAudio() {
 
 function speak(text) {
   return new Promise((resolve) => {
-    if (!voiceOn || !window.speechSynthesis) {
-      setOrb(continuous ? "listening" : "idle");
+    if (!voiceOn || !window.speechSynthesis || textOnly) {
+      setOrb(continuous && !textOnly ? "listening" : "idle");
       resolve();
       return;
     }
@@ -70,8 +85,8 @@ function speak(text) {
     let i = 0;
     const next = () => {
       if (i >= parts.length) {
-        setOrb(continuous ? "listening" : "idle");
-        setState(continuous ? "Dinliyor" : "Hazır");
+        setOrb(continuous && !textOnly ? "listening" : "idle");
+        setState(continuous && !textOnly ? "Dinliyor" : "Hazır");
         resolve();
         return;
       }
@@ -104,7 +119,6 @@ async function openMedia() {
     if (audioCtx.state === "suspended") await audioCtx.resume();
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
-    // sadece ses kanalını analize bağla
     const audioTracks = mediaStream.getAudioTracks();
     if (audioTracks.length) {
       const audioOnly = new MediaStream(audioTracks);
@@ -112,7 +126,6 @@ async function openMedia() {
     }
     return true;
   } catch (_) {
-    // sadece mikrofon dene
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -124,7 +137,8 @@ async function openMedia() {
       camBtn.setAttribute("aria-pressed", "false");
       return true;
     } catch {
-      setState("İzin gerekli");
+      setState("İzin gerekli — yazabilirsiniz");
+      userCam.style.display = "none";
       return false;
     }
   }
@@ -153,7 +167,7 @@ async function askJarvis(message) {
   setOrb("thinking");
   setState("Düşünüyor");
   setSubs(message);
-
+  addLog("u", message);
   let full = "";
   try {
     const res = await fetch("/api/chat/stream", {
@@ -184,8 +198,9 @@ async function askJarvis(message) {
       }
     }
     if (!full.trim()) full = "Yanıt alamadım efendim.";
+    addLog("j", full);
     await speak(full);
-    if (continuous) setTimeout(() => startListening(), 280);
+    if (continuous && !textOnly) setTimeout(() => startListening(), 280);
     else setState("Hazır");
   } catch (_) {
     try {
@@ -195,7 +210,9 @@ async function askJarvis(message) {
         body: JSON.stringify({ message }),
       });
       const data = await res.json();
-      await speak(data.reply || "Bağlantı hatası.");
+      const reply = data.reply || "Bağlantı hatası.";
+      addLog("j", reply);
+      await speak(reply);
     } catch {
       await speak("Bağlantı hatası.");
     }
@@ -205,7 +222,7 @@ async function askJarvis(message) {
 }
 
 function startListening() {
-  if (!recognition || recognizing || busy || !voiceOn) return;
+  if (textOnly || !recognition || recognizing || busy || !voiceOn) return;
   try { recognition.start(); } catch (_) {}
 }
 function stopListening() {
@@ -215,14 +232,13 @@ function stopListening() {
 function setupSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    setState("Ses tanıma yok");
+    setState("Ses tanıma yok — yazabilirsiniz");
     return;
   }
   recognition = new SR();
   recognition.lang = "tr-TR";
   recognition.interimResults = true;
   recognition.continuous = false;
-
   recognition.onstart = () => {
     recognizing = true;
     setOrb("listening");
@@ -233,9 +249,9 @@ function setupSpeech() {
   recognition.onend = () => {
     recognizing = false;
     stopLevels();
-    if (continuous && voiceOn && !busy) {
+    if (continuous && voiceOn && !busy && !textOnly) {
       setTimeout(() => {
-        if (continuous && !busy && !recognizing) startListening();
+        if (continuous && !busy && !recognizing && !textOnly) startListening();
       }, 350);
     }
   };
@@ -255,28 +271,38 @@ function setupSpeech() {
   };
 }
 
-async function startCall() {
+async function startCall(opts = {}) {
   if (started) return;
   started = true;
+  textOnly = !!opts.textOnly;
+  if (textOnly) {
+    voiceOn = false;
+    camOn = false;
+    continuous = false;
+    muteBtn.setAttribute("aria-pressed", "false");
+    muteBtn.textContent = "Sessiz";
+    camBtn.setAttribute("aria-pressed", "false");
+    userCam.style.display = "none";
+    chatLog.hidden = false;
+    logBtn.setAttribute("aria-pressed", "true");
+  }
   unlockAudio();
   callUi.hidden = false;
   bootGate.classList.add("hide");
   setTimeout(() => bootGate.remove(), 500);
-
-  // Ana orb'u yeniden bağla (gate preview kalktıktan sonra)
-  // orb.js zaten #orb için oluşturdu
   setOrb("thinking");
-  setState("Bağlanıyor");
-
-  const ok = await openMedia();
+  setState(textOnly ? "Yazılı sohbet" : "Bağlanıyor");
+  let ok = false;
+  if (!textOnly) ok = await openMedia();
   jarvisVoice = pickVoice();
-  await speak("Jarvis çevrimiçi. Görüntülü görüşme hazır. Emrinizi bekliyorum.");
-
-  if (ok && recognition && voiceOn) {
-    startListening();
-  } else {
-    setState("Mikrofon / kamera izni gerekli");
-  }
+  const hello = textOnly
+    ? "Jarvis çevrimiçi. Yazılı sohbet hazır."
+    : "Jarvis çevrimiçi. Görüntülü görüşme hazır. Emrinizi bekliyorum.";
+  addLog("j", hello);
+  await speak(hello);
+  if (!textOnly && ok && recognition && voiceOn) startListening();
+  else if (!textOnly) setState("Mikrofon yok — yazabilirsiniz");
+  else { setState("Hazır"); setOrb("idle"); chatInput?.focus(); }
 }
 
 function endCall() {
@@ -299,6 +325,7 @@ muteBtn.addEventListener("click", () => {
     speechSynthesis?.cancel();
     setState("Sessiz");
   } else {
+    textOnly = false;
     continuous = true;
     startListening();
   }
@@ -312,8 +339,24 @@ camBtn.addEventListener("click", () => {
   userCam.style.opacity = camOn ? "1" : "0.2";
 });
 
+logBtn?.addEventListener("click", () => {
+  const open = chatLog.hidden;
+  chatLog.hidden = !open;
+  logBtn.setAttribute("aria-pressed", String(open));
+});
+
+chatForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = (chatInput.value || "").trim();
+  if (!msg) return;
+  chatInput.value = "";
+  stopListening();
+  await askJarvis(msg);
+});
+
 endBtn.addEventListener("click", endCall);
-bootBtn.addEventListener("click", startCall);
+bootBtn.addEventListener("click", () => startCall({ textOnly: false }));
+textBtn?.addEventListener("click", () => startCall({ textOnly: true }));
 
 if (window.speechSynthesis) {
   speechSynthesis.onvoiceschanged = () => { jarvisVoice = pickVoice(); };
