@@ -60,7 +60,7 @@ async function refreshStatus() {
     if (hudBrain) hudBrain.textContent = brain;
     const ev = s.evolve || {};
     if (hudLearn) hudLearn.textContent = "öğreti " + (ev.learned || 0) + " · görev " + (s.tasks || 0);
-    if (gateStatus) gateStatus.textContent = "v" + (s.version || "4.4") + " · " + brain;
+    if (gateStatus) gateStatus.textContent = "dokun — dinliyorum";
     return s;
   } catch {
     if (gateStatus) gateStatus.textContent = "Sunucu bekleniyor";
@@ -139,7 +139,7 @@ function speak(text) {
     const next = () => {
       if (i >= parts.length) {
         setOrb(continuous && !textOnly ? "listening" : "idle");
-        setState(continuous && !textOnly ? "Dinliyor — konuşun" : "Hazır"); resolve(); return;
+        setState(continuous && !textOnly ? "Dinliyor" : "Hazır"); resolve(); return;
       }
       const u = new SpeechSynthesisUtterance(parts[i++]);
       if (jarvisVoice) { u.voice = jarvisVoice; u.lang = jarvisVoice.lang || "en-GB"; }
@@ -217,7 +217,7 @@ async function askJarvis(message) {
         if (ev.type === "done") full = ev.reply || full;
       }
     }
-    if (!full.trim()) full = "Yanıt alamadım, efendim.";
+    if (!full.trim()) full = "Yanıt alamadım.";
     full = cleanSpeak(full); lastReply = full;
     addLog("j", full); await speak(full); refreshStatus();
     if (continuous && !textOnly) setTimeout(() => startListening(), 220); else setState("Hazır");
@@ -227,7 +227,7 @@ async function askJarvis(message) {
       const data = await res.json();
       const reply = cleanSpeak(data.reply || "Bağlantı hatası."); lastReply = reply;
       addLog("j", reply); await speak(reply);
-    } catch { await speak("Bağlantı hatası, efendim."); }
+    } catch { await speak("Bağlantı hatası."); }
   } finally { busy = false; }
 }
 function startListening() {
@@ -237,9 +237,9 @@ function startListening() {
 function stopListening() { try { recognition?.stop(); } catch (_) {} }
 function setupSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { setState("Bu tarayıcıda ses tanıma yok — Chrome/Edge kullanın"); return; }
+  if (!SR) { setState("Chrome veya Edge kullan"); return; }
   recognition = new SR(); recognition.lang = "tr-TR"; recognition.interimResults = true; recognition.continuous = false;
-  recognition.onstart = () => { recognizing = true; setOrb("listening"); setState("Dinliyor — konuşun"); startLevels(); };
+  recognition.onstart = () => { recognizing = true; setOrb("listening"); setState("Dinliyor"); startLevels(); };
   recognition.onend = () => {
     recognizing = false; stopLevels();
     if (continuous && voiceOn && !busy && !textOnly) setTimeout(() => { if (continuous && !busy && !recognizing && !textOnly) startListening(); }, 280);
@@ -256,59 +256,42 @@ function setupSpeech() {
 }
 async function startCall(opts = {}) {
   if (started) return; started = true; textOnly = !!opts.textOnly;
-  document.body.classList.toggle("voice-mode", !textOnly);
-  document.body.classList.toggle("text-mode", textOnly);
-  if (textOnly) {
-    voiceOn = false; camOn = false; continuous = false;
-    muteBtn?.setAttribute("aria-pressed", "false"); if (muteBtn) muteBtn.textContent = "Sessiz";
-    camBtn?.setAttribute("aria-pressed", "false"); if (userCam) userCam.style.display = "none";
-    sidePanel?.classList.remove("collapsed"); panelBtn?.setAttribute("aria-pressed", "true");
-  } else {
-    voiceOn = true; continuous = true;
-    sidePanel?.classList.add("collapsed"); panelBtn?.setAttribute("aria-pressed", "false");
-  }
-  unlockAudio(); callUi.hidden = false; bootGate.classList.add("hide"); setTimeout(() => bootGate.remove(), 500);
-  setOrb("thinking"); setState(textOnly ? "Yazılı sohbet" : "Bağlanıyor");
-  let ok = false; if (!textOnly) ok = await openMedia();
+  document.body.classList.add("voice-mode");
+  voiceOn = true; continuous = true;
+  sidePanel?.classList.add("collapsed");
+  unlockAudio(); callUi.hidden = false; bootGate?.classList.add("hide"); setTimeout(() => bootGate?.remove(), 400);
+  setOrb("thinking"); setState("Bağlanıyor");
+  const ok = await openMedia();
   jarvisVoice = pickVoice();
   let hello = "";
   try {
-    const h = await (await fetch("/api/hello" + (textOnly ? "?text=1" : ""))).json();
+    const h = await (await fetch("/api/hello")).json();
     hello = h.speak || "";
   } catch (_) {}
-  if (!hello) {
-    const name = knownName || "efendim";
-    hello = "Sistemler çevrimiçi. " + dayPart() + " " + name + ".";
-  }
+  if (!hello) hello = "Sistemler çevrimiçi. Dinliyorum.";
   lastReply = hello; addLog("j", hello); await speak(hello);
   startNudge();
-  if (!textOnly && ok && recognition && voiceOn) startListening();
-  else if (!textOnly) setState("Mikrofon yok — Chrome'dan açın");
-  else { setState("Hazır"); setOrb("idle"); chatInput?.focus(); }
+  if (ok && recognition && voiceOn) startListening();
+  else setState("Mikrofon izni ver");
 }
 function endCall() {
   continuous = false; stopListening(); speechSynthesis?.cancel();
   if (nudgeTimer) { clearInterval(nudgeTimer); nudgeTimer = null; }
   mediaStream?.getTracks()?.forEach((t) => t.stop());
-  setOrb("idle"); setState("Görüşme bitti"); setSubs("Yenilemek için sayfayı yenileyin");
-  if (userCam) userCam.srcObject = null;
+  setOrb("idle"); setState("Görüşme bitti");
 }
 muteBtn?.addEventListener("click", () => {
   voiceOn = !voiceOn; muteBtn.setAttribute("aria-pressed", String(voiceOn)); muteBtn.textContent = voiceOn ? "Ses" : "Sessiz";
   if (!voiceOn) { stopListening(); speechSynthesis?.cancel(); setState("Sessiz"); }
-  else { textOnly = false; continuous = true; document.body.classList.add("voice-mode"); startListening(); }
+  else startListening();
 });
 camBtn?.addEventListener("click", () => {
   camOn = !camOn; camBtn.setAttribute("aria-pressed", String(camOn));
   const v = mediaStream?.getVideoTracks?.()?.[0]; if (v) v.enabled = camOn;
-  if (userCam) userCam.style.opacity = camOn ? "1" : "0.2";
 });
 panelBtn?.addEventListener("click", () => {
   const collapsed = sidePanel?.classList.toggle("collapsed");
   panelBtn.setAttribute("aria-pressed", String(!collapsed));
-});
-document.getElementById("chips")?.addEventListener("click", (e) => {
-  const q = e.target?.getAttribute?.("data-q"); if (q) askJarvis(q);
 });
 chatForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -316,7 +299,6 @@ chatForm?.addEventListener("submit", async (e) => {
   chatInput.value = ""; stopListening(); await askJarvis(msg);
 });
 endBtn?.addEventListener("click", endCall);
-bootBtn?.addEventListener("click", () => startCall({ textOnly: false }));
-textBtn?.addEventListener("click", () => startCall({ textOnly: true }));
+document.addEventListener("pointerdown", () => startCall({ textOnly: false }), { once: true });
 if (window.speechSynthesis) speechSynthesis.onvoiceschanged = () => { jarvisVoice = pickVoice(); };
 setupSpeech(); setOrb("idle"); tickClock(); setInterval(tickClock, 15000); refreshStatus(); setInterval(refreshStatus, 20000);
