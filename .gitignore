@@ -9,3 +9,6 @@ static/jarvis.zip
 .gemini_key
 .env
 secrets.*
+data/journal.jsonl
+data/*.tmp
+data/memory.json.tmp

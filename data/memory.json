@@ -1,0 +1,13 @@
+{
+  "user_name": "Ali",
+  "city": null,
+  "notes": [],
+  "prefs": {},
+  "pending_learn": [],
+  "stats": {
+    "turns": 0,
+    "learned": 0,
+    "auto_retrains": 0,
+    "last_evolve": null
+  }
+}
