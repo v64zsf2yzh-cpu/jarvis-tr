@@ -23,7 +23,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
 
 let voiceOn = true, camOn = true, continuous = true, recognizing = false, busy = false, started = false, textOnly = false;
 let recognition = null, jarvisVoice = null, audioCtx = null, analyser = null, levelLoop = null, mediaStream = null;
-let lastReply = "", nudgeTimer = null;
+let lastReply = "", nudgeTimer = null, knownName = "";
 
 function setOrb(mode) { window.JarvisOrb?.setMode(mode); }
 function setState(t) { if (stateLine) stateLine.textContent = t; }
@@ -37,12 +37,14 @@ function addLog(who, text) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 function cleanSpeak(t) {
-  return String(t || "")
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/[*_`#]+/g, " ")
-    .replace(/^\s*[-•]\s*/gm, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(t || "").replace(/```[\s\S]*?```/g, " ").replace(/[*_`#]+/g, " ").replace(/^\s*[-•]\s*/gm, " ").replace(/\s+/g, " ").trim();
+}
+function dayPart() {
+  const h = new Date().getHours();
+  if (h < 6) return "İyi geceler";
+  if (h < 12) return "Günaydın";
+  if (h < 18) return "İyi günler";
+  return "İyi akşamlar";
 }
 function tickClock() {
   const n = new Date();
@@ -52,14 +54,17 @@ function tickClock() {
 async function refreshStatus() {
   try {
     const s = await (await fetch("/api/status")).json();
+    if (s.user_name) knownName = s.user_name;
     const brain = s.gemini?.configured ? ("Gemini " + (s.gemini.model || "")) :
       (s.ollama?.available ? ("Ollama " + (s.ollama.active_model || "")) : "yerel");
     if (hudBrain) hudBrain.textContent = brain;
     const ev = s.evolve || {};
     if (hudLearn) hudLearn.textContent = "öğreti " + (ev.learned || 0) + " · görev " + (s.tasks || 0);
-    if (gateStatus) gateStatus.textContent = "v" + (s.version || "4.2") + " · " + brain;
+    if (gateStatus) gateStatus.textContent = "v" + (s.version || "4.3") + " · " + brain;
+    return s;
   } catch {
     if (gateStatus) gateStatus.textContent = "Sunucu bekleniyor";
+    return null;
   }
 }
 async function pollNudge() {
@@ -266,9 +271,13 @@ async function startCall(opts = {}) {
   setOrb("thinking"); setState(textOnly ? "Yazılı sohbet" : "Bağlanıyor");
   let ok = false; if (!textOnly) ok = await openMedia();
   jarvisVoice = pickVoice();
-  const hello = textOnly
-    ? "Jarvis çevrimiçi. Yazabilirsiniz, efendim."
-    : "Defense protocol standing by. Jarvis çevrimiçi. Emrinizi bekliyorum, efendim.";
+  const s = await refreshStatus();
+  const name = (s && s.user_name) || knownName || "efendim";
+  const tasks = (s && s.tasks) || 0;
+  let hello = textOnly
+    ? `Jarvis çevrimiçi. ${dayPart()} ${name}.`
+    : `Defense protocol standing by. ${dayPart()} ${name}. Jarvis çevrimiçi.`;
+  if (tasks) hello += ` ${tasks} açık görevin var.`;
   lastReply = hello; addLog("j", hello); await speak(hello);
   startNudge();
   if (!textOnly && ok && recognition && voiceOn) startListening();
