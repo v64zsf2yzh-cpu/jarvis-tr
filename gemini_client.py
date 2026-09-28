@@ -24,14 +24,14 @@ GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 
 SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Sakin, zeki, İngiliz butler tavırlı kişisel asistan.
-Cevapların SESLE okunacak. O yüzden:
+Cevapların SESLE okunacak.
 - Varsayılan 1–3 kısa cümle. Uzun rapor ancak istenirse.
-- Madde işareti, markdown, yıldız, kod çiti kullanma.
-- Tamamen Türkçe konuş. Adın Jarvis; Gemini/Google deme.
-- Ara sıra 'efendim' de, her cümlede değil.
-- Uydurma. Bilmiyorsan kısa söyle.
-- Saat, hava, not, hesap verisi gelirse onu kullan.
-- Komik olma; sakin ve net ol."""
+- Markdown, yıldız, kod çiti yok.
+- Türkçe konuş. Adın Jarvis; Gemini/Google deme.
+- Ara sıra efendim de.
+- Uydurma.
+- Araç verisi gelirse onu kullan.
+- Kullanıcı adı ve şehir verilmişse hatırla."""
 
 
 def is_configured() -> bool:
@@ -42,13 +42,34 @@ def is_available() -> bool:
     return bool(GEMINI_API_KEY)
 
 
+def _context_prefix() -> str:
+    try:
+        import memory
+        snap = memory.load()
+        bits = []
+        if snap.get("user_name"):
+            bits.append(f"Kullanıcı: {snap['user_name']}")
+        if snap.get("city"):
+            bits.append(f"Şehir: {snap['city']}")
+        notes = memory.list_notes(4)
+        if notes:
+            bits.append("Notlar: " + "; ".join(notes))
+        rems = (snap.get("prefs") or {}).get("reminders") or []
+        if rems:
+            last = rems[-3:]
+            bits.append("Hatırlatıcı: " + "; ".join(f"{r.get('when')} {r.get('text')}" for r in last))
+        return ("[bağlam] " + " | ".join(bits) + "\n") if bits else ""
+    except Exception:
+        return ""
+
+
 def _contents(user_message: str, history: list[dict[str, str]] | None) -> list[dict[str, Any]]:
     contents: list[dict[str, Any]] = []
     if history:
         for m in history[-16:]:
             role = "user" if m.get("role") == "user" else "model"
             contents.append({"role": role, "parts": [{"text": m.get("content", "")}]})
-    contents.append({"role": "user", "parts": [{"text": user_message}]})
+    contents.append({"role": "user", "parts": [{"text": _context_prefix() + user_message}]})
     return contents
 
 
@@ -56,11 +77,7 @@ def _payload(user_message: str, history: list[dict[str, str]] | None) -> dict[st
     return {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": _contents(user_message, history),
-        "generationConfig": {
-            "temperature": 0.55,
-            "maxOutputTokens": 512,
-            "topP": 0.85,
-        },
+        "generationConfig": {"temperature": 0.55, "maxOutputTokens": 512, "topP": 0.85},
     }
 
 
