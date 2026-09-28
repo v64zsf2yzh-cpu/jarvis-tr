@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis v3.9 — sesli komuta + araçlar + kendini geliştirme."""
+"""Jarvis v4.2 — sesli iş asistanı."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from flask import Flask, jsonify, render_template, request
 import evolve
 import hooks
 import memory
+import nudge
 from brain import JarvisBrain, teach_qa, train
 from skills import Skills
 
@@ -47,11 +48,7 @@ def boot() -> Skills:
     skills.set_retrain(_retrain)
     hooks.install(skills)
     evolve.start(_retrain, interval_sec=180)
-    print(
-        f"Jarvis v3.9 | acc={brain.meta.get('accuracy', 0):.3f} | "
-        f"val={brain.meta.get('val_accuracy', 0):.3f} | "
-        f"niyet={len(brain.tags)} | özellik={len(brain.vocab)} | örnek={brain.meta.get('samples')}"
-    )
+    print(f"Jarvis v4.2 | acc={brain.meta.get('accuracy', 0):.3f}")
     return skills
 
 
@@ -111,15 +108,21 @@ def teach():
         return jsonify({"error": "question ve answer gerekli"}), 400
     info = teach_qa(q, a)
     memory.enqueue_learn(q, a)
-    return jsonify({"ok": True, "taught": info, "hint": "Arka planda modele işlenecek."})
+    return jsonify({"ok": True, "taught": info})
 
 
 @app.post("/api/retrain")
 def retrain():
     if evolve.status().get("training"):
-        return jsonify({"ok": True, "queued": True, "message": "Eğitim zaten çalışıyor."})
+        return jsonify({"ok": True, "queued": True})
     started = evolve.background_train(skills._retrain_fn or train)
     return jsonify({"ok": True, "background": started})
+
+
+@app.get("/api/nudge")
+def api_nudge():
+    text = nudge.pop_due()
+    return jsonify({"speak": text, "reminders": nudge.status_blob()})
 
 
 @app.get("/api/status")
@@ -129,25 +132,22 @@ def status():
     import selfcode
     ev = evolve.status()
     snap = memory.load()
+    prefs = snap.get("prefs") or {}
     return jsonify({
         "name": "Jarvis",
-        "version": "3.9",
+        "version": "4.2",
         "language": "tr",
-        "trained_from_scratch": True,
         "accuracy": skills.brain.meta.get("accuracy"),
-        "val_accuracy": skills.brain.meta.get("val_accuracy"),
         "samples": skills.brain.meta.get("samples"),
-        "intents": skills.brain.tags,
-        "vocab_size": len(skills.brain.vocab),
-        "knowledge_count": len(skills.brain.knowledge),
-        "memory_count": len(memory.list_notes(80)),
         "user_name": snap.get("user_name") or skills.user_name,
         "city": snap.get("city"),
+        "job": prefs.get("job"),
+        "tasks": len(prefs.get("tasks") or []),
         "gemini": gemini_client.status(),
         "ollama": ollama_client.status(),
         "evolve": ev,
         "selfcode": selfcode.status(),
-        "features": ["voice", "gemini", "tools", "wiki", "fx", "news", "reminders", "memory", "self-improve"],
+        "nudge": nudge.status_blob(),
     })
 
 
@@ -168,11 +168,5 @@ def manifest():
 if __name__ == "__main__":
     port = 5050
     ip = local_ip()
-    print()
-    print("=" * 50)
-    print("  JARVIS Komuta Merkezi v3.9")
-    print(f"  Telefondan aç : http://{ip}:{port}")
-    print(f"  Bu cihazda    : http://127.0.0.1:{port}")
-    print("=" * 50)
-    print()
+    print("JARVIS v4.2", f"http://{ip}:{port}", f"http://127.0.0.1:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
