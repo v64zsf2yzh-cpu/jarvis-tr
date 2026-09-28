@@ -52,8 +52,14 @@ html, body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.gate-btn {
+.gate-actions {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: center;
   margin-top: 0.7rem;
+}
+.gate-btn {
   border: 1px solid var(--amber);
   background: rgba(255, 140, 40, 0.16);
   color: var(--amber-hot);
@@ -64,6 +70,11 @@ html, body {
   border-radius: 999px;
   cursor: pointer;
   box-shadow: 0 0 28px rgba(255, 140, 40, 0.25);
+}
+.gate-btn.ghost {
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.85;
 }
 
 .call {
@@ -94,7 +105,7 @@ html, body {
   place-items: center;
   align-content: center;
   gap: 0.35rem;
-  padding-bottom: 4.5rem;
+  padding-bottom: 7.2rem;
 }
 #orb {
   width: min(88vw, 420px);
@@ -120,7 +131,7 @@ html, body {
   position: absolute;
   left: 1rem;
   right: 1rem;
-  bottom: calc(5.4rem + var(--safe-b));
+  bottom: calc(8.2rem + var(--safe-b));
   text-align: center;
   font-size: 0.95rem;
   line-height: 1.35;
@@ -132,6 +143,57 @@ html, body {
   pointer-events: none;
 }
 
+.chat-dock {
+  position: absolute;
+  left: 0.7rem;
+  right: 0.7rem;
+  bottom: calc(5.3rem + var(--safe-b));
+  z-index: 5;
+}
+.chat-log {
+  max-height: 28vh;
+  overflow-y: auto;
+  margin-bottom: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  background: rgba(8, 4, 0, 0.72);
+  border: 1px solid rgba(255, 154, 60, 0.25);
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-align: left;
+}
+.chat-log p { margin: 0.28rem 0; }
+.chat-log .u { color: #ffc57a; }
+.chat-log .j { color: #ffe7c8; opacity: 0.9; }
+.chat-form {
+  display: flex;
+  gap: 0.4rem;
+}
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 154, 60, 0.4);
+  background: rgba(20, 10, 2, 0.88);
+  color: #ffe7c8;
+  font-family: var(--font);
+  font-size: 0.72rem;
+  padding: 0.72rem 0.95rem;
+  outline: none;
+}
+.chat-form .send {
+  border-radius: 999px;
+  border: 1px solid var(--amber);
+  background: rgba(255, 140, 40, 0.18);
+  color: var(--amber-hot);
+  font-family: var(--font);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  padding: 0 0.9rem;
+  cursor: pointer;
+}
+
 .call-bar {
   position: absolute;
   left: 0;
@@ -139,7 +201,7 @@ html, body {
   bottom: calc(0.9rem + var(--safe-b));
   display: flex;
   justify-content: center;
-  gap: 1.1rem;
+  gap: 0.75rem;
   z-index: 4;
 }
 .round {
