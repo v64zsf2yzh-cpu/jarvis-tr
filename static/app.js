@@ -59,10 +59,12 @@ function pickVoice() {
   const score = (v) => {
     const n = (v.name + " " + v.lang).toLowerCase();
     let s = 0;
-    if (v.lang?.toLowerCase().startsWith("tr")) s += 80;
-    if (v.lang?.toLowerCase().startsWith("en-gb")) s += 30;
-    if (/male|daniel|thomas|james|david|arthur/.test(n)) s += 20;
-    if (/female|filiz|yelda|zira/.test(n)) s -= 12;
+    if (/google uk english male|daniel|arthur|george|thomas|james|ryan|malcolm|oliver|ravi/.test(n)) s += 120;
+    if (v.lang?.toLowerCase().startsWith("en-gb")) s += 70;
+    if (v.lang?.toLowerCase().startsWith("en-us") && /male|david|mark|guy/.test(n)) s += 40;
+    if (/male|baritone/.test(n)) s += 25;
+    if (v.lang?.toLowerCase().startsWith("tr")) s += 8;
+    if (/female|filiz|yelda|zira|samantha|siri|karen|moira|tessa|fiona/.test(n)) s -= 80;
     return s;
   };
   return [...voices].sort((a, b) => score(b) - score(a))[0];
@@ -77,12 +79,29 @@ function unlockAudio() {
     }
   } catch (_) {}
 }
+function protocolChime() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const t0 = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(880, t0);
+    o.frequency.exponentialRampToValueAtTime(440, t0 + 0.18);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t0); o.stop(t0 + 0.3);
+  } catch (_) {}
+}
 function speak(text) {
   return new Promise((resolve) => {
     if (!voiceOn || !window.speechSynthesis || textOnly) {
       setOrb(continuous && !textOnly ? "listening" : "idle"); resolve(); return;
     }
     speechSynthesis.cancel(); jarvisVoice = pickVoice(); setSubs(text);
+    protocolChime();
     const parts = (text.match(/[^.!?…]+[.!?…]*/g) || [text]).map((x) => x.trim()).filter(Boolean).slice(0, 14);
     let i = 0;
     const next = () => {
@@ -91,13 +110,16 @@ function speak(text) {
         setState(continuous && !textOnly ? "Dinliyor — konuşun" : "Hazır"); resolve(); return;
       }
       const u = new SpeechSynthesisUtterance(parts[i++]);
-      if (jarvisVoice) { u.voice = jarvisVoice; u.lang = jarvisVoice.lang || "tr-TR"; } else u.lang = "tr-TR";
-      u.rate = isIOS ? 0.95 : 0.9; u.pitch = 0.76;
+      if (jarvisVoice) { u.voice = jarvisVoice; u.lang = jarvisVoice.lang || "en-GB"; }
+      else u.lang = "en-GB";
+      u.rate = isIOS ? 0.88 : 0.82;
+      u.pitch = 0.62;
+      u.volume = 1;
       setOrb("speaking"); setState("Konuşuyor");
       const pulse = setInterval(() => window.JarvisOrb?.pulse(0.55 + Math.random() * 0.4), 80);
       u.onend = () => { clearInterval(pulse); next(); };
       u.onerror = () => { clearInterval(pulse); next(); };
-      speechSynthesis.speak(u);
+      setTimeout(() => speechSynthesis.speak(u), i === 1 ? 220 : 40);
     };
     next();
   });
@@ -155,7 +177,7 @@ async function askJarvis(message) {
         if (ev.type === "done") full = ev.reply || full;
       }
     }
-    if (!full.trim()) full = "Yanıt alamadım efendim.";
+    if (!full.trim()) full = "Yanıt alamadım, efendim.";
     addLog("j", full); await speak(full); refreshStatus();
     if (continuous && !textOnly) setTimeout(() => startListening(), 220); else setState("Hazır");
   } catch (_) {
@@ -163,7 +185,7 @@ async function askJarvis(message) {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) });
       const data = await res.json();
       const reply = data.reply || "Bağlantı hatası."; addLog("j", reply); await speak(reply);
-    } catch { await speak("Bağlantı hatası."); }
+    } catch { await speak("Bağlantı hatası, efendim."); }
   } finally { busy = false; }
 }
 function startListening() {
@@ -207,7 +229,9 @@ async function startCall(opts = {}) {
   setOrb("thinking"); setState(textOnly ? "Yazılı sohbet" : "Bağlanıyor");
   let ok = false; if (!textOnly) ok = await openMedia();
   jarvisVoice = pickVoice();
-  const hello = textOnly ? "Jarvis çevrimiçi. Yazabilirsiniz." : "Jarvis çevrimiçi. Sizi dinliyorum, konuşun.";
+  const hello = textOnly
+    ? "Jarvis çevrimiçi. Yazabilirsiniz, efendim."
+    : "Defense protocol standing by. Jarvis çevrimiçi. Emrinizi bekliyorum, efendim.";
   addLog("j", hello); await speak(hello);
   if (!textOnly && ok && recognition && voiceOn) startListening();
   else if (!textOnly) setState("Mikrofon yok — Chrome'dan açın");
