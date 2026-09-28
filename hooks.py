@@ -7,6 +7,7 @@ import fx
 import learned_skills
 import selfcode
 import tools
+import wiki
 
 TRIGGERS = (
     "kendini gelistir", "kendini geliştir", "kodunu guncelle", "kodunu güncelle",
@@ -23,7 +24,7 @@ def install(skills) -> None:
         low = normalize(raw)
         if raw and any(k in low for k in TRIGGERS):
             return {"direct": selfcode.cycle_now(reason=raw)}
-        hit = tools.try_reminder(raw, low) or fx.try_fx(raw, low)
+        hit = tools.try_reminder(raw, low) or fx.try_fx(raw, low) or wiki.try_wiki(raw, low)
         if hit:
             return {"direct": hit}
         try:
