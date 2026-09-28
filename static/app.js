@@ -60,7 +60,7 @@ async function refreshStatus() {
     if (hudBrain) hudBrain.textContent = brain;
     const ev = s.evolve || {};
     if (hudLearn) hudLearn.textContent = "öğreti " + (ev.learned || 0) + " · görev " + (s.tasks || 0);
-    if (gateStatus) gateStatus.textContent = "v" + (s.version || "4.3") + " · " + brain;
+    if (gateStatus) gateStatus.textContent = "v" + (s.version || "4.4") + " · " + brain;
     return s;
   } catch {
     if (gateStatus) gateStatus.textContent = "Sunucu bekleniyor";
@@ -271,13 +271,15 @@ async function startCall(opts = {}) {
   setOrb("thinking"); setState(textOnly ? "Yazılı sohbet" : "Bağlanıyor");
   let ok = false; if (!textOnly) ok = await openMedia();
   jarvisVoice = pickVoice();
-  const s = await refreshStatus();
-  const name = (s && s.user_name) || knownName || "efendim";
-  const tasks = (s && s.tasks) || 0;
-  let hello = textOnly
-    ? `Jarvis çevrimiçi. ${dayPart()} ${name}.`
-    : `Defense protocol standing by. ${dayPart()} ${name}. Jarvis çevrimiçi.`;
-  if (tasks) hello += ` ${tasks} açık görevin var.`;
+  let hello = "";
+  try {
+    const h = await (await fetch("/api/hello" + (textOnly ? "?text=1" : ""))).json();
+    hello = h.speak || "";
+  } catch (_) {}
+  if (!hello) {
+    const name = knownName || "efendim";
+    hello = "Sistemler çevrimiçi. " + dayPart() + " " + name + ".";
+  }
   lastReply = hello; addLog("j", hello); await speak(hello);
   startNudge();
   if (!textOnly && ok && recognition && voiceOn) startListening();
