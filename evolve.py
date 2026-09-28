@@ -1,4 +1,4 @@
-"""Jarvis açıkken arka planda kendini geliştirir."""
+"""VPS açıkken arka planda kendini geliştirir. Kullanıcı konuşmasa da."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import threading
 import time
 from typing import Any, Callable
 
+import health
 import memory
 import selfcode
 from brain import teach_qa
@@ -27,17 +28,18 @@ def status() -> dict[str, Any]:
         "auto_retrains": (snap.get("stats") or {}).get("auto_retrains", 0),
         "last_evolve": (snap.get("stats") or {}).get("last_evolve"),
         "selfcode": selfcode.status(),
+        "health": health.status(),
     }
 
 
-def start(retrain_fn: Callable[[], dict[str, Any]], interval_sec: int = 180) -> None:
+def start(retrain_fn: Callable[[], dict[str, Any]], interval_sec: int = 75) -> None:
     global _thread
     if _thread and _thread.is_alive():
         return
 
     def loop():
         _state["running"] = True
-        time.sleep(40)
+        time.sleep(25)
         while not _stop.is_set():
             try:
                 tick(retrain_fn)
@@ -110,13 +112,18 @@ def tick(retrain_fn: Callable[[], dict[str, Any]]) -> None:
         retrains = int((snap.get("stats") or {}).get("auto_retrains") or 0)
         if learned >= 4 and learned // 8 > retrains:
             background_train(retrain_fn)
-    if _state["ticks"] % 3 == 0:
-        try:
-            patch = selfcode.cycle(force=False, reason="idle-tick")
-            if patch.get("ok"):
-                _state["last_result"] = patch.get("summary") or "selfcode"
-        except Exception as e:
-            _state["last_error"] = str(e)
+    # her tick: sağlık + öz kod (konuşma şart değil)
+    try:
+        reason = health.prompt_blob()
+        force = bool(health.scan()) or (_state["ticks"] % 2 == 0)
+        patch = selfcode.cycle(force=force, reason=reason)
+        if patch.get("ok"):
+            _state["last_result"] = patch.get("summary") or "selfcode"
+            memory.mark_evolve({"last_patch": patch.get("summary")})
+        elif patch.get("reason"):
+            _state["last_result"] = str(patch.get("reason"))[:80]
+    except Exception as e:
+        _state["last_error"] = str(e)
 
 
 def background_train(retrain_fn: Callable[[], dict[str, Any]]) -> bool:
