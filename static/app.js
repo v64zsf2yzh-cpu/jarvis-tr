@@ -23,6 +23,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
 
 let voiceOn = true, camOn = true, continuous = true, recognizing = false, busy = false, started = false, textOnly = false;
 let recognition = null, jarvisVoice = null, audioCtx = null, analyser = null, levelLoop = null, mediaStream = null;
+let lastReply = "";
 
 function setOrb(mode) { window.JarvisOrb?.setMode(mode); }
 function setState(t) { if (stateLine) stateLine.textContent = t; }
@@ -34,6 +35,14 @@ function addLog(who, text) {
   p.textContent = (who === "u" ? "Siz: " : "Jarvis: ") + text;
   chatLog.appendChild(p);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+function cleanSpeak(t) {
+  return String(t || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/[*_`#]+/g, " ")
+    .replace(/^\s*[-•]\s*/gm, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 function tickClock() {
   const n = new Date();
@@ -48,7 +57,7 @@ async function refreshStatus() {
     if (hudBrain) hudBrain.textContent = brain;
     const ev = s.evolve || {};
     if (hudLearn) hudLearn.textContent = "öğreti " + (ev.learned || 0) + " · kuyruk " + (ev.pending_learn || 0);
-    if (gateStatus) gateStatus.textContent = "v" + (s.version || "3.8") + " · " + brain;
+    if (gateStatus) gateStatus.textContent = "v" + (s.version || "3.9") + " · " + brain;
   } catch {
     if (gateStatus) gateStatus.textContent = "Sunucu bekleniyor";
   }
@@ -97,12 +106,13 @@ function protocolChime() {
 }
 function speak(text) {
   return new Promise((resolve) => {
+    text = cleanSpeak(text);
     if (!voiceOn || !window.speechSynthesis || textOnly) {
       setOrb(continuous && !textOnly ? "listening" : "idle"); resolve(); return;
     }
     speechSynthesis.cancel(); jarvisVoice = pickVoice(); setSubs(text);
     protocolChime();
-    const parts = (text.match(/[^.!?…]+[.!?…]*/g) || [text]).map((x) => x.trim()).filter(Boolean).slice(0, 14);
+    const parts = (text.match(/[^.!?…]+[.!?…]*/g) || [text]).map((x) => x.trim()).filter(Boolean).slice(0, 8);
     let i = 0;
     const next = () => {
       if (i >= parts.length) {
@@ -159,7 +169,15 @@ function startLevels() {
 }
 function stopLevels() { if (levelLoop) clearInterval(levelLoop); levelLoop = null; }
 async function askJarvis(message) {
-  if (busy || !message) return;
+  if (!message) return;
+  const low = message.toLocaleLowerCase("tr-TR");
+  if (/\b(sus|kes sesi|sessiz ol|dur konuş)\b/.test(low) && message.split(/\s+/).length <= 6) {
+    speechSynthesis.cancel(); setState("Sessiz"); setOrb("idle"); return;
+  }
+  if (/\b(tekrar et|tekrar söyle|ne dedin|bir daha söyle)\b/.test(low) && lastReply) {
+    await speak(lastReply); return;
+  }
+  if (busy) return;
   busy = true; setOrb("thinking"); setState("Düşünüyor"); setSubs(message); addLog("u", message);
   let full = "";
   try {
@@ -178,13 +196,15 @@ async function askJarvis(message) {
       }
     }
     if (!full.trim()) full = "Yanıt alamadım, efendim.";
+    full = cleanSpeak(full); lastReply = full;
     addLog("j", full); await speak(full); refreshStatus();
     if (continuous && !textOnly) setTimeout(() => startListening(), 220); else setState("Hazır");
   } catch (_) {
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message }) });
       const data = await res.json();
-      const reply = data.reply || "Bağlantı hatası."; addLog("j", reply); await speak(reply);
+      const reply = cleanSpeak(data.reply || "Bağlantı hatası."); lastReply = reply;
+      addLog("j", reply); await speak(reply);
     } catch { await speak("Bağlantı hatası, efendim."); }
   } finally { busy = false; }
 }
@@ -197,7 +217,7 @@ function setupSpeech() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { setState("Bu tarayıcıda ses tanıma yok — Chrome/Edge kullanın"); return; }
   recognition = new SR(); recognition.lang = "tr-TR"; recognition.interimResults = true; recognition.continuous = false;
-  recognition.onstart = () => { recognizing = true; setOrb("listening"); setState("Dinliyor — konuşun"); speechSynthesis?.cancel(); startLevels(); };
+  recognition.onstart = () => { recognizing = true; setOrb("listening"); setState("Dinliyor — konuşun"); startLevels(); };
   recognition.onend = () => {
     recognizing = false; stopLevels();
     if (continuous && voiceOn && !busy && !textOnly) setTimeout(() => { if (continuous && !busy && !recognizing && !textOnly) startListening(); }, 280);
@@ -232,7 +252,7 @@ async function startCall(opts = {}) {
   const hello = textOnly
     ? "Jarvis çevrimiçi. Yazabilirsiniz, efendim."
     : "Defense protocol standing by. Jarvis çevrimiçi. Emrinizi bekliyorum, efendim.";
-  addLog("j", hello); await speak(hello);
+  lastReply = hello; addLog("j", hello); await speak(hello);
   if (!textOnly && ok && recognition && voiceOn) startListening();
   else if (!textOnly) setState("Mikrofon yok — Chrome'dan açın");
   else { setState("Hazır"); setOrb("idle"); chatInput?.focus(); }
