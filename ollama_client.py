@@ -1,4 +1,4 @@
-"""Ollama istemcisi — sohbet + akış (stream)."""
+"""Ollama istemcisi — sohbet + akış."""
 
 from __future__ import annotations
 
@@ -13,25 +13,14 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "").strip()
 TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "180"))
 
-SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin — Iron Man filmlerindeki gibi zeki, sakin ve etkili bir kişisel asistan.
-Tamamen Türkçe konuşursun.
-
-Kimliğin:
-- Adın Jarvis. Kullanıcıya yardımcı, net ve güven verici ol.
-- Kısa tutulabilecek cevapları kısa ver; karmaşık konularda maddelerle açıkla.
-- Kod, bilim, tarih, günlük hayat, planlama, fikir üretme — hepsinde uzman gibi yardım et.
-- Uydurma. Bilmiyorsan söyle.
-- Sana saat/tarih/hesap/not gibi araç verisi gelirse onu doğru kullan.
-- Hitap doğal olsun; ara sıra 'efendim' diyebilirsin ama her cümlede değil.
-- Gereksiz İngilizce kelime kullanma."""
+SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Cevapların sesle okunacak.
+Türkçe, 1–3 kısa cümle. Markdown yok. Adın Jarvis. Uydurma. Ara sıra efendim."""
 
 
 def _request(method: str, path: str, payload: dict[str, Any] | None = None, timeout: float | None = None):
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        f"{OLLAMA_URL}{path}",
-        data=data,
-        method=method,
+        f"{OLLAMA_URL}{path}", data=data, method=method,
         headers={"Content-Type": "application/json"},
     )
     return urllib.request.urlopen(req, timeout=timeout or TIMEOUT)
@@ -64,10 +53,7 @@ def pick_model() -> str | None:
     models = list_models()
     if not models:
         return None
-    preferred = [
-        "qwen2.5", "qwen2", "llama3.2", "llama3.1", "llama3",
-        "gemma2", "gemma", "mistral", "phi3", "phi",
-    ]
+    preferred = ["qwen2.5", "qwen2", "llama3.2", "llama3.1", "llama3", "gemma2", "mistral"]
     lower = {m.lower(): m for m in models}
     for pref in preferred:
         for name, original in lower.items():
@@ -77,9 +63,9 @@ def pick_model() -> str | None:
 
 
 def _messages(user_message: str, history: list[dict[str, str]] | None) -> list[dict[str, str]]:
-    messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if history:
-        messages.extend(history[-16:])
+        messages.extend(history[-12:])
     messages.append({"role": "user", "content": user_message})
     return messages
 
@@ -87,58 +73,38 @@ def _messages(user_message: str, history: list[dict[str, str]] | None) -> list[d
 def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
     model = pick_model()
     if not model:
-        return {
-            "ok": False,
-            "error": "Ollama'da model yok. Sunucuda: ollama pull llama3.2",
-            "reply": None,
-            "model": None,
-        }
+        return {"ok": False, "error": "Ollama'da model yok", "reply": None, "model": None}
     try:
-        data = _http_json(
-            "POST",
-            "/api/chat",
-            {
-                "model": model,
-                "messages": _messages(user_message, history),
-                "stream": False,
-                "options": {"temperature": 0.65, "num_predict": 1200, "top_p": 0.9},
-            },
-        )
+        data = _http_json("POST", "/api/chat", {
+            "model": model,
+            "messages": _messages(user_message, history),
+            "stream": False,
+            "options": {"temperature": 0.55, "num_predict": 280, "top_p": 0.85},
+        })
         reply = ((data.get("message") or {}).get("content") or "").strip()
         if not reply:
             return {"ok": False, "error": "Boş yanıt", "reply": None, "model": model}
         return {"ok": True, "reply": reply, "model": model, "error": None}
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="ignore")
-        return {"ok": False, "error": f"HTTP {e.code}: {body[:200]}", "reply": None, "model": model}
     except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-            "reply": None,
-            "model": model,
-            "hint": "ollama serve && ollama pull llama3.2",
-        }
+        return {"ok": False, "error": str(e), "reply": None, "model": model}
 
 
 def chat_stream(user_message: str, history: list[dict[str, str]] | None = None) -> Iterator[dict[str, Any]]:
-    """Ollama NDJSON stream → {token} / {done, reply, model} / {error}."""
     model = pick_model()
     if not model:
-        yield {"error": "Ollama'da model yok. ollama pull llama3.2"}
+        yield {"error": "Ollama'da model yok"}
         return
     payload = {
         "model": model,
         "messages": _messages(user_message, history),
         "stream": True,
-        "options": {"temperature": 0.65, "num_predict": 1200, "top_p": 0.9},
+        "options": {"temperature": 0.55, "num_predict": 280, "top_p": 0.85},
     }
     try:
         resp = _request("POST", "/api/chat", payload, timeout=TIMEOUT)
     except Exception as e:
         yield {"error": str(e)}
         return
-
     buf = ""
     with resp:
         while True:
@@ -162,9 +128,4 @@ def chat_stream(user_message: str, history: list[dict[str, str]] | None = None) 
 def status() -> dict[str, Any]:
     ok = is_available()
     models = list_models() if ok else []
-    return {
-        "available": ok,
-        "url": OLLAMA_URL,
-        "models": models,
-        "active_model": pick_model() if ok else None,
-    }
+    return {"available": ok, "url": OLLAMA_URL, "models": models, "active_model": pick_model() if ok else None}
