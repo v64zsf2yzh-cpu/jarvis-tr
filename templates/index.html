@@ -12,14 +12,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=40" />
+  <link rel="stylesheet" href="/static/style.css?v=42" />
 </head>
 <body>
   <div class="scan" aria-hidden="true"></div>
   <div id="bootGate" class="gate">
     <canvas id="orbPreview" width="420" height="420" aria-hidden="true"></canvas>
     <p class="gate-brand">J.A.R.V.I.S.</p>
-    <p class="gate-hint">sesli komuta · v4.0</p>
+    <p class="gate-hint">sesli komuta · v4.2</p>
     <div class="gate-status" id="gateStatus">Sistem yoklanıyor…</div>
     <div class="gate-actions">
       <button type="button" id="bootBtn" class="gate-btn">ARA</button>
@@ -44,11 +44,11 @@
       <aside class="panel" id="sidePanel">
         <div class="subs" id="subs" aria-live="polite"></div>
         <div class="chips" id="chips">
-          <button type="button" data-q="saat kaç">Saat</button>
-          <button type="button" data-q="yarın hava">Yarın</button>
+          <button type="button" data-q="brifing">Brifing</button>
+          <button type="button" data-q="plan yap">Plan</button>
+          <button type="button" data-q="görevlerim">Görev</button>
+          <button type="button" data-q="beni tanı">Profil</button>
           <button type="button" data-q="dolar kaç">Dolar</button>
-          <button type="button" data-q="gündem ne">Gündem</button>
-          <button type="button" data-q="ne konuştuk">Özet</button>
         </div>
         <div class="chat-log" id="chatLog"></div>
         <form id="chatForm" class="chat-form" autocomplete="off">
@@ -64,7 +64,7 @@
       <button type="button" id="endBtn" class="round end">Bitir</button>
     </div>
   </main>
-  <script src="/static/orb.js?v=40"></script>
-  <script src="/static/app.js?v=40"></script>
+  <script src="/static/orb.js?v=42"></script>
+  <script src="/static/app.js?v=42"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-"""Gelişmiş araçlar: yarın hava, özet, brifing, vadesi gelen hatırlatıcı."""
+"""Gelişmiş araçlar: brifing, plan, özet, hava."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ import tools
 def try_extra(text: str, low: str) -> dict[str, Any] | None:
     if any(k in low for k in ("brifing", "günlük rapor", "sabah raporu", "günözeti", "gun ozeti")):
         return _briefing()
+    if any(k in low for k in ("günlük plan", "gunluk plan", "plan yap", "bugün ne yapayım", "sıra ne")):
+        return _plan()
     if any(k in low for k in ("sohbeti ozetle", "sohbeti özetle", "ne konustuk", "ne konuştuk", "ozetle")):
         return _recap()
     if any(k in low for k in ("yarin hava", "yarın hava", "yarınki hava", "hava yarın")):
@@ -30,20 +32,39 @@ def try_extra(text: str, low: str) -> dict[str, Any] | None:
 def _briefing() -> dict[str, Any]:
     now = datetime.now()
     snap = memory.load()
+    prefs = snap.get("prefs") or {}
     city = snap.get("city") or "Istanbul"
     name = snap.get("user_name") or "efendim"
-    parts = [
-        f"Brifing, {name}. Saat {now.strftime('%H:%M')}.",
-        tools.weather(city),
-        _forecast(city),
-    ]
+    job = prefs.get("job")
+    parts = [f"Brifing, {name}. Saat {now.strftime('%H:%M')}."]
+    if job:
+        parts.append(f"İş: {job}.")
+    parts.append(tools.weather(city))
+    parts.append(_forecast(city))
     fx_hit = fx.try_fx("dolar kaç", "dolar kac")
     if fx_hit and fx_hit.get("reply"):
         parts.append(fx_hit["reply"])
+    tasks = prefs.get("tasks") or []
+    if tasks:
+        parts.append("Açık görev: " + "; ".join(tasks[:3]) + ".")
     due = _due_reminders()
     if due:
         parts.append(due)
     return {"reply": " ".join(parts), "intent": "brifing", "model": "tool:briefing", "confidence": 1.0}
+
+
+def _plan() -> dict[str, Any]:
+    tasks = (memory.load().get("prefs") or {}).get("tasks") or []
+    if not tasks:
+        return {"reply": "Plan için önce görev ekle.", "intent": "plan", "model": "tool:plan", "confidence": 1.0}
+    order = tasks[:4]
+    spoken = ". Sonra ".join(order)
+    return {
+        "reply": f"Bugün sıra: {spoken}. Bitti deyince kapatırım.",
+        "intent": "plan",
+        "model": "tool:plan",
+        "confidence": 1.0,
+    }
 
 
 def _due_reminders() -> str | None:
