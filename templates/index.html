@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
-  <meta name="theme-color" content="#020617" />
+  <meta name="theme-color" content="#02040a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml" />
-  <title>JARVIS Komuta Merkezi</title>
+  <title>JARVIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
+  <div class="scan" aria-hidden="true"></div>
   <div id="bootGate" class="gate">
     <canvas id="orbPreview" width="420" height="420" aria-hidden="true"></canvas>
     <p class="gate-brand">J.A.R.V.I.S.</p>
-    <p class="gate-hint">Komuta merkezi v3.8</p>
+    <p class="gate-hint">sesli komuta · v3.9</p>
     <div class="gate-status" id="gateStatus">Sistem yoklanıyor…</div>
     <div class="gate-actions">
       <button type="button" id="bootBtn" class="gate-btn">ARA</button>
@@ -34,7 +35,9 @@
     <video id="userCam" playsinline autoplay muted></video>
     <div class="workspace">
       <section class="orb-stage">
-        <canvas id="orb" width="720" height="720" aria-label="Jarvis"></canvas>
+        <div class="orb-frame">
+          <canvas id="orb" width="720" height="720" aria-label="Jarvis"></canvas>
+        </div>
         <p class="brand">J.A.R.V.I.S.</p>
         <p class="state" id="stateLine">Bağlanıyor…</p>
       </section>
@@ -43,13 +46,13 @@
         <div class="chips" id="chips">
           <button type="button" data-q="saat kaç">Saat</button>
           <button type="button" data-q="hava nasıl">Hava</button>
+          <button type="button" data-q="dolar kaç">Dolar</button>
           <button type="button" data-q="sistem durumu">Durum</button>
           <button type="button" data-q="notlarım ne">Notlar</button>
-          <button type="button" data-q="kendini geliştir">Geliştir</button>
         </div>
         <div class="chat-log" id="chatLog"></div>
         <form id="chatForm" class="chat-form" autocomplete="off">
-          <input id="chatInput" type="text" maxlength="800" placeholder="Emrinizi yazın…" enterkeyhint="send" />
+          <input id="chatInput" type="text" maxlength="800" placeholder="Yedek yazı…" enterkeyhint="send" />
           <button type="submit" class="send">Gönder</button>
         </form>
       </aside>
@@ -57,7 +60,7 @@
     <div class="call-bar">
       <button type="button" id="muteBtn" class="round" aria-pressed="true">Ses</button>
       <button type="button" id="camBtn" class="round" aria-pressed="true">Kamera</button>
-      <button type="button" id="panelBtn" class="round" aria-pressed="true">Panel</button>
+      <button type="button" id="panelBtn" class="round" aria-pressed="false">Panel</button>
       <button type="button" id="endBtn" class="round end">Bitir</button>
     </div>
   </main>
