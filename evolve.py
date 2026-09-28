@@ -8,17 +8,13 @@ import time
 from typing import Any, Callable
 
 import memory
+import selfcode
 from brain import teach_qa
 
 _stop = threading.Event()
-_thread: threading.Thread | None = None
+_thread = None
 _train_lock = threading.Lock()
-_state = {
-    "running": False,
-    "training": False,
-    "last_error": None,
-    "last_result": None,
-}
+_state = {"running": False, "training": False, "last_error": None, "last_result": None, "ticks": 0}
 
 
 def status() -> dict[str, Any]:
@@ -30,6 +26,7 @@ def status() -> dict[str, Any]:
         "learned": (snap.get("stats") or {}).get("learned", 0),
         "auto_retrains": (snap.get("stats") or {}).get("auto_retrains", 0),
         "last_evolve": (snap.get("stats") or {}).get("last_evolve"),
+        "selfcode": selfcode.status(),
     }
 
 
@@ -40,7 +37,7 @@ def start(retrain_fn: Callable[[], dict[str, Any]], interval_sec: int = 180) -> 
 
     def loop():
         _state["running"] = True
-        time.sleep(25)
+        time.sleep(40)
         while not _stop.is_set():
             try:
                 tick(retrain_fn)
@@ -70,11 +67,7 @@ def _maybe_profile(user: str) -> None:
     m = re.search(r"(?:benim adım|adım|ismim)\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)", user, flags=re.I)
     if m:
         memory.set_profile(user_name=m.group(1).strip().title())
-    m = re.search(
-        r"(?:şehirim|yaşadığım yer|yaşıyorum|şehir)\s*:?\s*([A-Za-zÇĞİÖŞÜçğıöşü]+)",
-        user,
-        flags=re.I,
-    )
+    m = re.search(r"(?:şehirim|yaşadığım yer|yaşıyorum|şehir)\s*:?\s*([A-Za-zÇĞİÖŞÜçğıöşü]+)", user, flags=re.I)
     if m:
         memory.set_profile(city=m.group(1).strip().title())
 
@@ -94,11 +87,11 @@ def _maybe_correction(user: str, reply: str) -> None:
 
 
 def intent_ok(low: str) -> bool:
-    bad = ("şifre", "parola", "password", "anahtar", "api key", "token")
-    return not any(b in low for b in bad)
+    return not any(b in low for b in ("şifre", "parola", "password", "anahtar", "api key", "token"))
 
 
 def tick(retrain_fn: Callable[[], dict[str, Any]]) -> None:
+    _state["ticks"] = int(_state.get("ticks") or 0) + 1
     pending = memory.load().get("pending_learn") or []
     if pending:
         batch = memory.pop_pending(12)
@@ -114,6 +107,13 @@ def tick(retrain_fn: Callable[[], dict[str, Any]]) -> None:
         retrains = int((snap.get("stats") or {}).get("auto_retrains") or 0)
         if learned >= 4 and learned // 8 > retrains:
             background_train(retrain_fn)
+    if _state["ticks"] % 3 == 0:
+        try:
+            patch = selfcode.cycle(force=False, reason="idle-tick")
+            if patch.get("ok"):
+                _state["last_result"] = patch.get("summary") or "selfcode"
+        except Exception as e:
+            _state["last_error"] = str(e)
 
 
 def background_train(retrain_fn: Callable[[], dict[str, Any]]) -> bool:
@@ -126,9 +126,7 @@ def background_train(retrain_fn: Callable[[], dict[str, Any]]) -> bool:
         _state["training"] = True
         try:
             meta = retrain_fn()
-            memory.update(lambda d: d["stats"].__setitem__(
-                "auto_retrains", int(d["stats"].get("auto_retrains", 0)) + 1
-            ))
+            memory.update(lambda d: d["stats"].__setitem__("auto_retrains", int(d["stats"].get("auto_retrains", 0)) + 1))
             memory.mark_evolve({"last_acc": meta.get("accuracy")})
             _state["last_result"] = f"auto-retrain acc={meta.get('accuracy')}"
         except Exception as e:
