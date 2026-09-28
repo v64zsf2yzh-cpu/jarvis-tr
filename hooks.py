@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from brain import normalize
+import fx
 import learned_skills
 import selfcode
 import tools
@@ -22,20 +23,20 @@ def install(skills) -> None:
         low = normalize(raw)
         if raw and any(k in low for k in TRIGGERS):
             return {"direct": selfcode.cycle_now(reason=raw)}
-        rem = tools.try_reminder(raw, low)
-        if rem:
-            return {"direct": rem}
+        hit = tools.try_reminder(raw, low) or fx.try_fx(raw, low)
+        if hit:
+            return {"direct": hit}
         try:
             import importlib
             importlib.reload(learned_skills)
-            hit = learned_skills.try_handle(raw, low)
+            learned = learned_skills.try_handle(raw, low)
         except Exception:
-            hit = None
-        if hit and isinstance(hit, dict) and hit.get("reply"):
-            hit.setdefault("intent", "learned")
-            hit.setdefault("model", "learned_skills")
-            hit.setdefault("confidence", 1.0)
-            return {"direct": hit}
+            learned = None
+        if learned and isinstance(learned, dict) and learned.get("reply"):
+            learned.setdefault("intent", "learned")
+            learned.setdefault("model", "learned_skills")
+            learned.setdefault("confidence", 1.0)
+            return {"direct": learned}
         return orig(text)
 
     skills._prepare = wrapped
