@@ -23,7 +23,7 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
 
 let voiceOn = true, camOn = true, continuous = true, recognizing = false, busy = false, started = false, textOnly = false;
 let recognition = null, jarvisVoice = null, audioCtx = null, analyser = null, levelLoop = null, mediaStream = null;
-let lastReply = "";
+let lastReply = "", nudgeTimer = null;
 
 function setOrb(mode) { window.JarvisOrb?.setMode(mode); }
 function setState(t) { if (stateLine) stateLine.textContent = t; }
@@ -56,11 +56,28 @@ async function refreshStatus() {
       (s.ollama?.available ? ("Ollama " + (s.ollama.active_model || "")) : "yerel");
     if (hudBrain) hudBrain.textContent = brain;
     const ev = s.evolve || {};
-    if (hudLearn) hudLearn.textContent = "öğreti " + (ev.learned || 0) + " · kuyruk " + (ev.pending_learn || 0);
-    if (gateStatus) gateStatus.textContent = "v" + (s.version || "3.9") + " · " + brain;
+    if (hudLearn) hudLearn.textContent = "öğreti " + (ev.learned || 0) + " · görev " + (s.tasks || 0);
+    if (gateStatus) gateStatus.textContent = "v" + (s.version || "4.2") + " · " + brain;
   } catch {
     if (gateStatus) gateStatus.textContent = "Sunucu bekleniyor";
   }
+}
+async function pollNudge() {
+  if (!started || busy || textOnly || !voiceOn) return;
+  try {
+    const data = await (await fetch("/api/nudge")).json();
+    if (data.speak) {
+      lastReply = data.speak;
+      addLog("j", data.speak);
+      stopListening();
+      await speak(data.speak);
+      if (continuous) setTimeout(() => startListening(), 250);
+    }
+  } catch (_) {}
+}
+function startNudge() {
+  if (nudgeTimer) clearInterval(nudgeTimer);
+  nudgeTimer = setInterval(pollNudge, 20000);
 }
 function pickVoice() {
   const voices = window.speechSynthesis?.getVoices?.() || [];
@@ -112,7 +129,7 @@ function speak(text) {
     }
     speechSynthesis.cancel(); jarvisVoice = pickVoice(); setSubs(text);
     protocolChime();
-    const parts = (text.match(/[^.!?…]+[.!?…]*/g) || [text]).map((x) => x.trim()).filter(Boolean).slice(0, 8);
+    const parts = (text.match(/[^.!?...]+[.!?...]*/g) || [text]).map((x) => x.trim()).filter(Boolean).slice(0, 8);
     let i = 0;
     const next = () => {
       if (i >= parts.length) {
@@ -253,12 +270,14 @@ async function startCall(opts = {}) {
     ? "Jarvis çevrimiçi. Yazabilirsiniz, efendim."
     : "Defense protocol standing by. Jarvis çevrimiçi. Emrinizi bekliyorum, efendim.";
   lastReply = hello; addLog("j", hello); await speak(hello);
+  startNudge();
   if (!textOnly && ok && recognition && voiceOn) startListening();
   else if (!textOnly) setState("Mikrofon yok — Chrome'dan açın");
   else { setState("Hazır"); setOrb("idle"); chatInput?.focus(); }
 }
 function endCall() {
   continuous = false; stopListening(); speechSynthesis?.cancel();
+  if (nudgeTimer) { clearInterval(nudgeTimer); nudgeTimer = null; }
   mediaStream?.getTracks()?.forEach((t) => t.stop());
   setOrb("idle"); setState("Görüşme bitti"); setSubs("Yenilemek için sayfayı yenileyin");
   if (userCam) userCam.srcObject = null;
