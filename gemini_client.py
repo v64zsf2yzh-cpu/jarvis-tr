@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import urllib.error
 import urllib.request
 from collections.abc import Iterator
 from typing import Any
@@ -22,10 +21,11 @@ GEMINI_API_KEY = _load_key()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Kullanıcının kişisel asistanısın.
+SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Kullanıcının kişisel iş asistanısın.
 Cevaplar SESLE okunacak: 1–3 kısa Türkçe cümle. Markdown yok.
 Adın Jarvis. Gemini deme. Uydurma.
-Profil, iş ve görevler bağlamda varsa ona göre konuş; tanıdığın biri gibi."""
+Profil, iş, şirket, görev ve hatırlanan gerçekler varsa ona göre konuş.
+Tanıdığın biri gibi ol; her cümlede efendim deme."""
 
 
 def is_configured() -> bool:
@@ -44,14 +44,21 @@ def _context_prefix() -> str:
         bits = []
         if snap.get("user_name"):
             bits.append(f"Kullanıcı: {snap['user_name']}")
+        if prefs.get("nick"):
+            bits.append(f"Hitap: {prefs['nick']}")
         if prefs.get("job"):
             bits.append(f"İş: {prefs['job']}")
+        if prefs.get("company"):
+            bits.append(f"Şirket: {prefs['company']}")
         if snap.get("city"):
             bits.append(f"Şehir: {snap['city']}")
+        facts = prefs.get("facts") or []
+        if facts:
+            bits.append("Hakkında: " + "; ".join(facts[-6:]))
         tasks = prefs.get("tasks") or []
         if tasks:
             bits.append("Görevler: " + "; ".join(tasks[-5:]))
-        notes = memory.list_notes(4)
+        notes = memory.list_notes(3)
         if notes:
             bits.append("Notlar: " + "; ".join(notes))
         return ("[bağlam] " + " | ".join(bits) + "\n") if bits else ""
