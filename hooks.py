@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from brain import normalize
+import doorbell
 import extra
 import fx
 import learned_skills
@@ -28,7 +29,8 @@ def install(skills) -> None:
         if raw and any(k in low for k in TRIGGERS):
             return {"direct": selfcode.cycle_now(reason=raw)}
         hit = (
-            persona.try_persona(raw, low)
+            doorbell.try_door(raw, low)
+            or persona.try_persona(raw, low)
             or extra.try_extra(raw, low)
             or tools.try_reminder(raw, low)
             or fx.try_fx(raw, low)
