@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis v4.3 — sesli iş asistanı + kapı hattı."""
+"""Jarvis v4.4 — proaktif sesli asistan."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request
 
 import doorbell
 import evolve
+import hello
 import hooks
 import memory
 import nudge
@@ -47,9 +48,9 @@ def boot() -> Skills:
 
     skills.set_retrain(_retrain)
     hooks.install(skills)
-    evolve.start(_retrain, interval_sec=180)
+    evolve.start(_retrain, interval_sec=90)
     doorbell.start(interval_sec=12)
-    print(f"Jarvis v4.3 | acc={brain.meta.get('accuracy', 0):.3f}")
+    print(f"Jarvis v4.4 | acc={brain.meta.get('accuracy', 0):.3f}")
     return skills
 
 
@@ -123,6 +124,12 @@ def api_nudge():
     return jsonify({"speak": text, "reminders": nudge.status_blob()})
 
 
+@app.get("/api/hello")
+def api_hello():
+    text_only = request.args.get("text") == "1"
+    return jsonify(hello.compose(text_only=text_only))
+
+
 @app.get("/api/status")
 def status():
     import gemini_client
@@ -133,7 +140,7 @@ def status():
     prefs = snap.get("prefs") or {}
     return jsonify({
         "name": "Jarvis",
-        "version": "4.3",
+        "version": "4.4",
         "user_name": snap.get("user_name") or skills.user_name,
         "city": snap.get("city"),
         "job": prefs.get("job"),
@@ -159,5 +166,5 @@ def manifest():
 if __name__ == "__main__":
     port = 5050
     ip = local_ip()
-    print("JARVIS v4.3", f"http://{ip}:{port}")
+    print("JARVIS v4.4", f"http://{ip}:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
