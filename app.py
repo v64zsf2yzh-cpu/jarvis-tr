@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis v3.8 — Türkçe asistan + uyanıkken kendini kodlama."""
+"""Jarvis v3.9 — sesli komuta + araçlar + kendini geliştirme."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def boot() -> Skills:
     hooks.install(skills)
     evolve.start(_retrain, interval_sec=180)
     print(
-        f"Jarvis v3.8 | acc={brain.meta.get('accuracy', 0):.3f} | "
+        f"Jarvis v3.9 | acc={brain.meta.get('accuracy', 0):.3f} | "
         f"val={brain.meta.get('val_accuracy', 0):.3f} | "
         f"niyet={len(brain.tags)} | özellik={len(brain.vocab)} | örnek={brain.meta.get('samples')}"
     )
@@ -131,7 +131,7 @@ def status():
     snap = memory.load()
     return jsonify({
         "name": "Jarvis",
-        "version": "3.8",
+        "version": "3.9",
         "language": "tr",
         "trained_from_scratch": True,
         "accuracy": skills.brain.meta.get("accuracy"),
@@ -147,19 +147,19 @@ def status():
         "ollama": ollama_client.status(),
         "evolve": ev,
         "selfcode": selfcode.status(),
-        "features": ["gemini", "stream", "voice", "text-chat", "tools", "persistent-memory", "self-improve", "self-code"],
+        "features": ["voice", "gemini", "tools", "wiki", "fx", "news", "reminders", "memory", "self-improve"],
     })
 
 
 @app.get("/manifest.webmanifest")
 def manifest():
     return jsonify({
-        "name": "JARVIS Komuta Merkezi",
+        "name": "JARVIS",
         "short_name": "JARVIS",
         "start_url": "/",
         "display": "standalone",
-        "background_color": "#020617",
-        "theme_color": "#020617",
+        "background_color": "#02040a",
+        "theme_color": "#02040a",
         "lang": "tr",
         "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}],
     })
@@ -170,10 +170,9 @@ if __name__ == "__main__":
     ip = local_ip()
     print()
     print("=" * 50)
-    print("  JARVIS Komuta Merkezi v3.8")
+    print("  JARVIS Komuta Merkezi v3.9")
     print(f"  Telefondan aç : http://{ip}:{port}")
     print(f"  Bu cihazda    : http://127.0.0.1:{port}")
-    print("  Ollama         : http://127.0.0.1:11434")
     print("=" * 50)
     print()
     app.run(host="0.0.0.0", port=port, debug=False)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from brain import normalize
 import fx
 import learned_skills
+import news
 import selfcode
 import tools
 import wiki
@@ -24,7 +25,12 @@ def install(skills) -> None:
         low = normalize(raw)
         if raw and any(k in low for k in TRIGGERS):
             return {"direct": selfcode.cycle_now(reason=raw)}
-        hit = tools.try_reminder(raw, low) or fx.try_fx(raw, low) or wiki.try_wiki(raw, low)
+        hit = (
+            tools.try_reminder(raw, low)
+            or fx.try_fx(raw, low)
+            or news.try_news(raw, low)
+            or wiki.try_wiki(raw, low)
+        )
         if hit:
             return {"direct": hit}
         try:
