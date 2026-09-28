@@ -12,15 +12,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=42" />
+  <link rel="stylesheet" href="/static/style.css?v=45" />
 </head>
 <body>
   <div class="scan" aria-hidden="true"></div>
   <div id="bootGate" class="gate">
     <canvas id="orbPreview" width="420" height="420" aria-hidden="true"></canvas>
     <p class="gate-brand">J.A.R.V.I.S.</p>
-    <p class="gate-hint">kişisel iş asistanı · v4.2</p>
-    <div class="gate-status" id="gateStatus">Sistem yoklanıyor…</div>
+    <p class="gate-hint">just a rather very intelligent system · v4.5</p>
+    <div class="gate-status" id="gateStatus">Sistemler yoklanıyor…</div>
     <div class="gate-actions">
       <button type="button" id="bootBtn" class="gate-btn">ARA</button>
       <button type="button" id="textBtn" class="gate-btn ghost">YAZ</button>
@@ -39,7 +39,7 @@
           <canvas id="orb" width="720" height="720" aria-label="Jarvis"></canvas>
         </div>
         <p class="brand">J.A.R.V.I.S.</p>
-        <p class="state" id="stateLine">Bağlanıyor…</p>
+        <p class="state" id="stateLine">Sistemler çevrimiçi…</p>
       </section>
       <aside class="panel" id="sidePanel">
         <div class="subs" id="subs" aria-live="polite"></div>
@@ -47,7 +47,7 @@
           <button type="button" data-q="brifing">Brifing</button>
           <button type="button" data-q="beni tanı">Profil</button>
           <button type="button" data-q="görevlerim">Görev</button>
-          <button type="button" data-q="işlerimi yap">Sıra</button>
+          <button type="button" data-q="kapıya bak">Kapı</button>
           <button type="button" data-q="gündem ne">Gündem</button>
         </div>
         <div class="chat-log" id="chatLog"></div>
@@ -64,7 +64,7 @@
       <button type="button" id="endBtn" class="round end">Bitir</button>
     </div>
   </main>
-  <script src="/static/orb.js?v=42"></script>
-  <script src="/static/app.js?v=42"></script>
+  <script src="/static/orb.js?v=45"></script>
+  <script src="/static/app.js?v=45"></script>
 </body>
 </html>
