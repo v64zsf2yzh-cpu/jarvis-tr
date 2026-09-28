@@ -9,7 +9,6 @@ import urllib.request
 from collections.abc import Iterator
 from typing import Any
 
-# Önce ortam, sonra gitignore'lu yerel dosya
 def _load_key() -> str:
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     if key:
@@ -24,17 +23,15 @@ GEMINI_API_KEY = _load_key()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin — Iron Man'deki gibi zeki, sakin ve etkili kişisel asistan.
-Tamamen Türkçe konuş.
-
-Kurallar:
-- Adın Jarvis. Google/Gemini olduğunu söyleme; sen Jarvis'sin.
-- Net, yardımcı ve doğru cevap ver.
-- Kısa tutulabilecekleri kısa yaz; karmaşık konularda maddeler kullan.
-- Kod, bilim, tarih, planlama, fikir — hepsinde yardım et.
-- Uydurma. Bilmiyorsan söyle.
-- Saat/tarih/hesap/not gibi araç verisi gelirse onu kullan.
-- Hitap doğal olsun; ara sıra 'efendim' diyebilirsin ama abartma."""
+SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Sakin, zeki, İngiliz butler tavırlı kişisel asistan.
+Cevapların SESLE okunacak. O yüzden:
+- Varsayılan 1–3 kısa cümle. Uzun rapor ancak istenirse.
+- Madde işareti, markdown, yıldız, kod çiti kullanma.
+- Tamamen Türkçe konuş. Adın Jarvis; Gemini/Google deme.
+- Ara sıra 'efendim' de, her cümlede değil.
+- Uydurma. Bilmiyorsan kısa söyle.
+- Saat, hava, not, hesap verisi gelirse onu kullan.
+- Komik olma; sakin ve net ol."""
 
 
 def is_configured() -> bool:
@@ -42,18 +39,7 @@ def is_configured() -> bool:
 
 
 def is_available() -> bool:
-    if not GEMINI_API_KEY:
-        return False
-    try:
-        req = urllib.request.Request(
-            f"{BASE}/models/{GEMINI_MODEL}?key={GEMINI_API_KEY}",
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            return resp.status == 200
-    except Exception:
-        # anahtar var ama ping başarısız olsa bile denemeye değer
-        return bool(GEMINI_API_KEY)
+    return bool(GEMINI_API_KEY)
 
 
 def _contents(user_message: str, history: list[dict[str, str]] | None) -> list[dict[str, Any]]:
@@ -71,9 +57,9 @@ def _payload(user_message: str, history: list[dict[str, str]] | None) -> dict[st
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": _contents(user_message, history),
         "generationConfig": {
-            "temperature": 0.7,
-            "maxOutputTokens": 2048,
-            "topP": 0.9,
+            "temperature": 0.55,
+            "maxOutputTokens": 512,
+            "topP": 0.85,
         },
     }
 
@@ -87,11 +73,7 @@ def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-        parts = (
-            data.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [])
-        )
+        parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
         text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
         if not text:
             return {"ok": False, "error": "Boş Gemini yanıtı", "reply": None, "model": GEMINI_MODEL}
@@ -115,7 +97,6 @@ def chat_stream(user_message: str, history: list[dict[str, str]] | None = None) 
     except Exception as e:
         yield {"error": str(e)}
         return
-
     buf = ""
     with resp:
         while True:
@@ -132,13 +113,8 @@ def chat_stream(user_message: str, history: list[dict[str, str]] | None = None) 
                 chunk = json.loads(payload)
             except Exception:
                 continue
-            parts = (
-                chunk.get("candidates", [{}])[0]
-                .get("content", {})
-                .get("parts", [])
-            )
+            parts = chunk.get("candidates", [{}])[0].get("content", {}).get("parts", [])
             piece = "".join(p.get("text", "") for p in parts if isinstance(p.get("text"), str))
-            # thoughtSignature içeren boş text'leri atla
             if piece:
                 buf += piece
                 yield {"token": piece, "model": f"gemini:{GEMINI_MODEL}"}

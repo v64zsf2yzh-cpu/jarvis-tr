@@ -1,22 +1,16 @@
-"""Çalışan Skills nesnesine kendini-kodlama kancası takar."""
+"""Çalışan Skills nesnesine kanca takar."""
 
 from __future__ import annotations
 
 from brain import normalize
 import learned_skills
 import selfcode
+import tools
 
 TRIGGERS = (
-    "kendini gelistir",
-    "kendini geliştir",
-    "kodunu guncelle",
-    "kodunu güncelle",
-    "kendine kod yaz",
-    "oz kodla",
-    "öz kodla",
-    "self improve",
-    "dosyalarini guncelle",
-    "dosyalarını güncelle",
+    "kendini gelistir", "kendini geliştir", "kodunu guncelle", "kodunu güncelle",
+    "kendine kod yaz", "oz kodla", "öz kodla", "self improve",
+    "dosyalarini guncelle", "dosyalarını güncelle",
 )
 
 
@@ -28,6 +22,9 @@ def install(skills) -> None:
         low = normalize(raw)
         if raw and any(k in low for k in TRIGGERS):
             return {"direct": selfcode.cycle_now(reason=raw)}
+        rem = tools.try_reminder(raw, low)
+        if rem:
+            return {"direct": rem}
         try:
             import importlib
             importlib.reload(learned_skills)
