@@ -1,4 +1,4 @@
-"""Google Gemini API istemcisi — birincil genel zekâ motoru."""
+"""Google Gemini API istemcisi."""
 
 from __future__ import annotations
 
@@ -18,20 +18,14 @@ def _load_key() -> str:
         return open(path, encoding="utf-8").read().strip()
     return ""
 
-
 GEMINI_API_KEY = _load_key()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Sakin, zeki, İngiliz butler tavırlı kişisel asistan.
-Cevapların SESLE okunacak.
-- Varsayılan 1–3 kısa cümle. Uzun rapor ancak istenirse.
-- Markdown, yıldız, kod çiti yok.
-- Türkçe konuş. Adın Jarvis; Gemini/Google deme.
-- Ara sıra efendim de.
-- Uydurma.
-- Araç verisi gelirse onu kullan.
-- Kullanıcı adı ve şehir verilmişse hatırla."""
+SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Kullanıcının kişisel asistanısın.
+Cevaplar SESLE okunacak: 1–3 kısa Türkçe cümle. Markdown yok.
+Adın Jarvis. Gemini deme. Uydurma.
+Profil, iş ve görevler bağlamda varsa ona göre konuş; tanıdığın biri gibi."""
 
 
 def is_configured() -> bool:
@@ -46,18 +40,20 @@ def _context_prefix() -> str:
     try:
         import memory
         snap = memory.load()
+        prefs = snap.get("prefs") or {}
         bits = []
         if snap.get("user_name"):
             bits.append(f"Kullanıcı: {snap['user_name']}")
+        if prefs.get("job"):
+            bits.append(f"İş: {prefs['job']}")
         if snap.get("city"):
             bits.append(f"Şehir: {snap['city']}")
+        tasks = prefs.get("tasks") or []
+        if tasks:
+            bits.append("Görevler: " + "; ".join(tasks[-5:]))
         notes = memory.list_notes(4)
         if notes:
             bits.append("Notlar: " + "; ".join(notes))
-        rems = (snap.get("prefs") or {}).get("reminders") or []
-        if rems:
-            last = rems[-3:]
-            bits.append("Hatırlatıcı: " + "; ".join(f"{r.get('when')} {r.get('text')}" for r in last))
         return ("[bağlam] " + " | ".join(bits) + "\n") if bits else ""
     except Exception:
         return ""
@@ -93,11 +89,8 @@ def chat(user_message: str, history: list[dict[str, str]] | None = None) -> dict
         parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
         text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
         if not text:
-            return {"ok": False, "error": "Boş Gemini yanıtı", "reply": None, "model": GEMINI_MODEL}
+            return {"ok": False, "error": "Boş yanıt", "reply": None, "model": GEMINI_MODEL}
         return {"ok": True, "reply": text, "model": f"gemini:{GEMINI_MODEL}", "error": None}
-    except urllib.error.HTTPError as e:
-        err = e.read().decode("utf-8", errors="ignore")
-        return {"ok": False, "error": f"HTTP {e.code}: {err[:240]}", "reply": None, "model": GEMINI_MODEL}
     except Exception as e:
         return {"ok": False, "error": str(e), "reply": None, "model": GEMINI_MODEL}
 
@@ -135,17 +128,11 @@ def chat_stream(user_message: str, history: list[dict[str, str]] | None = None) 
             if piece:
                 buf += piece
                 yield {"token": piece, "model": f"gemini:{GEMINI_MODEL}"}
-            finish = chunk.get("candidates", [{}])[0].get("finishReason")
-            if finish == "STOP":
+            if chunk.get("candidates", [{}])[0].get("finishReason") == "STOP":
                 yield {"done": True, "reply": buf.strip(), "model": f"gemini:{GEMINI_MODEL}"}
                 return
     yield {"done": True, "reply": buf.strip(), "model": f"gemini:{GEMINI_MODEL}"}
 
 
 def status() -> dict[str, Any]:
-    return {
-        "configured": is_configured(),
-        "available": is_configured(),
-        "model": GEMINI_MODEL if is_configured() else None,
-        "provider": "google-gemini",
-    }
+    return {"configured": is_configured(), "available": is_configured(), "model": GEMINI_MODEL if is_configured() else None, "provider": "google-gemini"}
