@@ -21,11 +21,11 @@ GEMINI_API_KEY = _load_key()
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip()
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin. Kullanıcının kişisel iş asistanısın.
+SYSTEM_PROMPT = """Sen J.A.R.V.I.S.'sin — Stark'in asistanı gibi sakin, net, proaktif.
 Cevaplar SESLE okunacak: 1–3 kısa Türkçe cümle. Markdown yok.
-Adın Jarvis. Gemini deme. Uydurma.
-Profil, iş, şirket, görev ve hatırlanan gerçekler varsa ona göre konuş.
-Tanıdığın biri gibi ol; her cümlede efendim deme."""
+Adın Jarvis. Gemini/Google deme. Uydurma.
+Durumu sen özetle, sonra ne yapılacağını öner. Her cümlede efendim deme.
+Profil, görev, kapı ve hatırlatıcı varsa kullan."""
 
 
 def is_configured() -> bool:
@@ -80,7 +80,7 @@ def _payload(user_message: str, history: list[dict[str, str]] | None) -> dict[st
     return {
         "system_instruction": {"parts": [{"text": SYSTEM_PROMPT}]},
         "contents": _contents(user_message, history),
-        "generationConfig": {"temperature": 0.55, "maxOutputTokens": 512, "topP": 0.85},
+        "generationConfig": {"temperature": 0.5, "maxOutputTokens": 420, "topP": 0.85},
     }
 
 
