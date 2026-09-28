@@ -7,6 +7,7 @@ import extra
 import fx
 import learned_skills
 import news
+import persona
 import selfcode
 import tools
 import wiki
@@ -27,7 +28,8 @@ def install(skills) -> None:
         if raw and any(k in low for k in TRIGGERS):
             return {"direct": selfcode.cycle_now(reason=raw)}
         hit = (
-            extra.try_extra(raw, low)
+            persona.try_persona(raw, low)
+            or extra.try_extra(raw, low)
             or tools.try_reminder(raw, low)
             or fx.try_fx(raw, low)
             or news.try_news(raw, low)
