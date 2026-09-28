@@ -6,9 +6,9 @@ from brain import normalize
 import doorbell
 import extra
 import fx
-import learned_skills
 import news
 import persona
+import research
 import selfcode
 import tools
 import wiki
@@ -35,6 +35,7 @@ def install(skills) -> None:
             or tools.try_reminder(raw, low)
             or fx.try_fx(raw, low)
             or news.try_news(raw, low)
+            or research.try_research(raw, low)
             or wiki.try_wiki(raw, low)
         )
         if hit:
