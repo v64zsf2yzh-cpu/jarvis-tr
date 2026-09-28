@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis v3.7 — Türkçe asistan + öğretme + kendini geliştirme."""
+"""Jarvis v3.8 — Türkçe asistan + uyanıkken kendini kodlama."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pathlib import Path
 from flask import Flask, jsonify, render_template, request
 
 import evolve
+import hooks
 import memory
 from brain import JarvisBrain, teach_qa, train
 from skills import Skills
@@ -44,9 +45,10 @@ def boot() -> Skills:
         return meta
 
     skills.set_retrain(_retrain)
+    hooks.install(skills)
     evolve.start(_retrain, interval_sec=180)
     print(
-        f"Jarvis v3.7 | acc={brain.meta.get('accuracy', 0):.3f} | "
+        f"Jarvis v3.8 | acc={brain.meta.get('accuracy', 0):.3f} | "
         f"val={brain.meta.get('val_accuracy', 0):.3f} | "
         f"niyet={len(brain.tags)} | özellik={len(brain.vocab)} | örnek={brain.meta.get('samples')}"
     )
@@ -124,11 +126,12 @@ def retrain():
 def status():
     import gemini_client
     import ollama_client
+    import selfcode
     ev = evolve.status()
     snap = memory.load()
     return jsonify({
         "name": "Jarvis",
-        "version": "3.7",
+        "version": "3.8",
         "language": "tr",
         "trained_from_scratch": True,
         "accuracy": skills.brain.meta.get("accuracy"),
@@ -143,7 +146,8 @@ def status():
         "gemini": gemini_client.status(),
         "ollama": ollama_client.status(),
         "evolve": ev,
-        "features": ["gemini", "stream", "voice", "text-chat", "command-center", "tools", "persistent-memory", "self-improve"],
+        "selfcode": selfcode.status(),
+        "features": ["gemini", "stream", "voice", "text-chat", "tools", "persistent-memory", "self-improve", "self-code"],
     })
 
 
@@ -166,7 +170,7 @@ if __name__ == "__main__":
     ip = local_ip()
     print()
     print("=" * 50)
-    print("  JARVIS Komuta Merkezi v3.7")
+    print("  JARVIS Komuta Merkezi v3.8")
     print(f"  Telefondan aç : http://{ip}:{port}")
     print(f"  Bu cihazda    : http://127.0.0.1:{port}")
     print("  Ollama         : http://127.0.0.1:11434")
