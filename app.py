@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis v2 — Türkçe asistan + öğretme + sıfırdan yeniden eğitim."""
+"""Jarvis v3.7 — Türkçe asistan + öğretme + kendini geliştirme."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 
+import evolve
+import memory
 from brain import JarvisBrain, teach_qa, train
 from skills import Skills
 
@@ -42,8 +44,9 @@ def boot() -> Skills:
         return meta
 
     skills.set_retrain(_retrain)
+    evolve.start(_retrain, interval_sec=180)
     print(
-        f"Jarvis v2 | acc={brain.meta.get('accuracy', 0):.3f} | "
+        f"Jarvis v3.7 | acc={brain.meta.get('accuracy', 0):.3f} | "
         f"val={brain.meta.get('val_accuracy', 0):.3f} | "
         f"niyet={len(brain.tags)} | özellik={len(brain.vocab)} | örnek={brain.meta.get('samples')}"
     )
@@ -61,9 +64,7 @@ def index():
 @app.get("/download")
 def download_zip():
     from flask import send_from_directory
-
     static = ROOT / "static"
-    # zip yoksa proje kökündeki yedeği dene
     name = "jarvis.zip"
     if not (static / name).exists():
         return jsonify({"error": "Zip yok"}), 404
@@ -81,11 +82,8 @@ def chat():
 
 @app.post("/api/chat/stream")
 def chat_stream():
-    """Canlı token akışı (NDJSON)."""
     import json as _json
-
     from flask import Response, stream_with_context
-
     data = request.get_json(silent=True) or {}
     text = (data.get("message") or "").strip()
     if not text:
@@ -110,75 +108,57 @@ def teach():
     if not q or not a:
         return jsonify({"error": "question ve answer gerekli"}), 400
     info = teach_qa(q, a)
-    return jsonify({"ok": True, "taught": info, "hint": "Kalıcı öğrenme için yeniden eğit çağırın."})
+    memory.enqueue_learn(q, a)
+    return jsonify({"ok": True, "taught": info, "hint": "Arka planda modele işlenecek."})
 
 
 @app.post("/api/retrain")
 def retrain():
-    meta = skills._retrain_fn() if skills._retrain_fn else train()
-    if not skills._retrain_fn:
-        skills.brain = JarvisBrain()
-    return jsonify(
-        {
-            "ok": True,
-            "meta": {
-                "accuracy": meta.get("accuracy"),
-                "val_accuracy": meta.get("val_accuracy"),
-                "samples": meta.get("samples"),
-                "intents": len(meta.get("tags", [])),
-                "vocab": len(meta.get("vocab", [])),
-            },
-        }
-    )
+    if evolve.status().get("training"):
+        return jsonify({"ok": True, "queued": True, "message": "Eğitim zaten çalışıyor."})
+    started = evolve.background_train(skills._retrain_fn or train)
+    return jsonify({"ok": True, "background": started})
 
 
 @app.get("/api/status")
 def status():
     import gemini_client
     import ollama_client
-
-    return jsonify(
-        {
-            "name": "Jarvis",
-            "version": "3.6",
-            "language": "tr",
-            "trained_from_scratch": True,
-            "accuracy": skills.brain.meta.get("accuracy"),
-            "val_accuracy": skills.brain.meta.get("val_accuracy"),
-            "samples": skills.brain.meta.get("samples"),
-            "intents": skills.brain.tags,
-            "vocab_size": len(skills.brain.vocab),
-            "knowledge_count": len(skills.brain.knowledge),
-            "memory_count": len(skills.memory),
-            "user_name": skills.user_name,
-            "gemini": gemini_client.status(),
-            "ollama": ollama_client.status(),
-            "features": ["gemini", "stream", "voice", "command-center", "tools"],
-        }
-    )
+    ev = evolve.status()
+    snap = memory.load()
+    return jsonify({
+        "name": "Jarvis",
+        "version": "3.7",
+        "language": "tr",
+        "trained_from_scratch": True,
+        "accuracy": skills.brain.meta.get("accuracy"),
+        "val_accuracy": skills.brain.meta.get("val_accuracy"),
+        "samples": skills.brain.meta.get("samples"),
+        "intents": skills.brain.tags,
+        "vocab_size": len(skills.brain.vocab),
+        "knowledge_count": len(skills.brain.knowledge),
+        "memory_count": len(memory.list_notes(80)),
+        "user_name": snap.get("user_name") or skills.user_name,
+        "city": snap.get("city"),
+        "gemini": gemini_client.status(),
+        "ollama": ollama_client.status(),
+        "evolve": ev,
+        "features": ["gemini", "stream", "voice", "text-chat", "command-center", "tools", "persistent-memory", "self-improve"],
+    })
 
 
 @app.get("/manifest.webmanifest")
 def manifest():
-    return jsonify(
-        {
-            "name": "JARVIS Komuta Merkezi",
-            "short_name": "JARVIS",
-            "start_url": "/",
-            "display": "standalone",
-            "background_color": "#020617",
-            "theme_color": "#020617",
-            "lang": "tr",
-            "icons": [
-                {
-                    "src": "/static/icon.svg",
-                    "sizes": "any",
-                    "type": "image/svg+xml",
-                    "purpose": "any maskable",
-                }
-            ],
-        }
-    )
+    return jsonify({
+        "name": "JARVIS Komuta Merkezi",
+        "short_name": "JARVIS",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#020617",
+        "theme_color": "#020617",
+        "lang": "tr",
+        "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}],
+    })
 
 
 if __name__ == "__main__":
@@ -186,7 +166,7 @@ if __name__ == "__main__":
     ip = local_ip()
     print()
     print("=" * 50)
-    print("  JARVIS Komuta Merkezi v3.5")
+    print("  JARVIS Komuta Merkezi v3.7")
     print(f"  Telefondan aç : http://{ip}:{port}")
     print(f"  Bu cihazda    : http://127.0.0.1:{port}")
     print("  Ollama         : http://127.0.0.1:11434")

@@ -17,8 +17,11 @@
   <div id="bootGate" class="gate">
     <canvas id="orbPreview" width="420" height="420" aria-hidden="true"></canvas>
     <p class="gate-brand">J.A.R.V.I.S.</p>
-    <p class="gate-hint">Sesli ve görüntülü görüşme</p>
-    <button type="button" id="bootBtn" class="gate-btn">ARA</button>
+    <p class="gate-hint">Sesli görüşme veya yazılı sohbet</p>
+    <div class="gate-actions">
+      <button type="button" id="bootBtn" class="gate-btn">ARA</button>
+      <button type="button" id="textBtn" class="gate-btn ghost">YAZ</button>
+    </div>
   </div>
 
   <main class="call" id="callUi" hidden>
@@ -28,16 +31,21 @@
       <p class="brand">J.A.R.V.I.S.</p>
       <p class="state" id="stateLine">Bağlanıyor…</p>
     </div>
-
     <div class="subs" id="subs" aria-live="polite"></div>
-
+    <div class="chat-dock" id="chatDock">
+      <div class="chat-log" id="chatLog" hidden></div>
+      <form id="chatForm" class="chat-form" autocomplete="off">
+        <input id="chatInput" type="text" maxlength="800" placeholder="Yazın veya konuşun…" />
+        <button type="submit" class="send">Gönder</button>
+      </form>
+    </div>
     <div class="call-bar">
       <button type="button" id="muteBtn" class="round" aria-pressed="false">Ses</button>
       <button type="button" id="camBtn" class="round" aria-pressed="true">Kamera</button>
+      <button type="button" id="logBtn" class="round" aria-pressed="false">Yazı</button>
       <button type="button" id="endBtn" class="round end">Bitir</button>
     </div>
   </main>
-
   <script src="/static/orb.js"></script>
   <script src="/static/app.js"></script>
 </body>
